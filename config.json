@@ -1,0 +1,9 @@
+{
+    "albumName": "Frame2",
+    "userName": "",
+    "password": "",
+    "workingDir": "/tmp/photos",
+    "maxSpaceGb": 0,
+    "adornPhotos": false,
+    "delayMs": 10
+}
