@@ -92,10 +92,16 @@ photolist = []
 for photo in photos:
     photolist.append(photo)
 
-#print ("# Fotos in album \"%s\": %d" % (albumName,len(photolist)))
+#print ("# Fotos in album \"%s\": %d"%(albumName,len(photolist)))
+
+pygame.event.set_allowed(pygame.KEYDOWN)
 
 while(1):
     try:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
+                exit(0)
+            
         photo = choice(photolist)
         if photo and photo.dimensions[0] * photo.dimensions[1] < 15000000:
             print (photo.filename, photo.size, photo.dimensions)

@@ -44,6 +44,9 @@ class FileCache:
         #try to return filename from cache given photo name. if it's not there, then 
         #download, convert, and save it
 
+        # first check for empty space and clean up if need be
+        self.cleanup()
+        
         # first, if it's HEIC, gotta find the converted version
         split = path.splitext(photo.filename)
         filename = split[0] + ".JPG"
@@ -98,9 +101,6 @@ class FileCache:
 
         self.usedSpace += path.getsize(fullPath)
 
-        # now check for empty space and clean up if need be
-        self.cleanup()
-
         return fullPath
 
     def cleanup(self):
@@ -114,5 +114,6 @@ class FileCache:
                 file = sortedPhotos[0][0]
                 fullFilePath = self.workingDir + "/" + file
                 self.usedSpace -= path.getsize(fullFilePath)
+                print("Cleanup deleting", fullFilePath)
                 os.unlink(fullFilePath)
                 self.photos.pop(file)
