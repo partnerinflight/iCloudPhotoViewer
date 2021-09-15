@@ -12,7 +12,13 @@ import sys
 import click
 import json
 from FileCache import FileCache
+import signal
 
+def keyboardInterruptHandler(signal, frame):
+    print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
+    exit(0)
+
+signal.signal(signal.SIGINT, keyboardInterruptHandler)
 # fetch config data
 albumName = 'Frame2'
 
@@ -25,7 +31,7 @@ with open('config.json', 'r') as config:
     workingDir = obj["workingDir"]
     maxSpace = obj["maxSpaceGb"]
     adornPhotos = obj["adornPhotos"]
-    delayMs = obj["delayMs"]
+    delaySecs = obj["delaySecs"]
 
     if not username:
         username = obj["userName"]
@@ -118,7 +124,7 @@ while(1):
             screen.blit(image, [(tsize[0]-ssize[0])/2,(tsize[1]-ssize[1])/2])
             pygame.display.flip() # display update
 
-            sleep(delayMs)
+            sleep(delaySecs)
         else:
             print ("skipping large photo")
     except KeyboardInterrupt:
