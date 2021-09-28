@@ -15,9 +15,21 @@ from FileCache import FileCache
 import signal
 import RPi.GPIO as GPIO
 
+pirState = False
+
 def keyboardInterruptHandler(signal, frame):
     print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
     exit(0)
+
+def switchPirState(channel):
+    global pirState
+    pirState = not(pirState)
+    print("PIR State: ", pirState)
+
+def toggleMonitor(channel):
+    GPIO.output(channel, GPIO.HIGH)
+    sleep(.5)
+    GPIO.output(channel, GPIO.LOW)
 
 signal.signal(signal.SIGINT, keyboardInterruptHandler)
 # fetch config data
@@ -70,15 +82,9 @@ print ("Configuring GPIO: ", GPIO.RPI_INFO)
 GPIO.setmode(GPIO.BOARD)
 sensorPin = 11
 relayPin = 13
-GPIO.setup(sensorPin, GPIO.IN, initial = 0)
+GPIO.setup(sensorPin, GPIO.IN)
 GPIO.setup(relayPin, GPIO.OUT, initial = 1)
-
-numTries = 3
-while(numTries < 5):
-    GPIO.output(relayPin, GPIO.HIGH)
-    sleep(5)
-    GPIO.output(relayPin, GPIO.LOW)
-    sleep(5)
+GPIO.add_event_detect(sensorPin, GPIO.BOTH, switchPirState, 600)
 
 # Open a window on the screen
 screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
