@@ -13,6 +13,7 @@ import click
 import json
 from FileCache import FileCache
 import signal
+import RPi.GPIO as GPIO
 
 def keyboardInterruptHandler(signal, frame):
     print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
@@ -65,8 +66,22 @@ if api.requires_2sa:
 
 print ("iCloud Authentication OK !")
                 
+print ("Configuring GPIO: ", GPIO.RPI_INFO)
+GPIO.setmode(GPIO.BOARD)
+sensorPin = 11
+relayPin = 13
+GPIO.setup(sensorPin, GPIO.IN, initial = 0)
+GPIO.setup(relayPin, GPIO.OUT, initial = 1)
+
+numTries = 3
+while(numTries < 5):
+    GPIO.output(relayPin, GPIO.HIGH)
+    sleep(5)
+    GPIO.output(relayPin, GPIO.LOW)
+    sleep(5)
+
 # Open a window on the screen
-screen = screen=pygame.display.set_mode() # [0,0], pygame.OPENGL)
+screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
 pygame.mouse.set_visible(0)
 print (pygame.display.get_driver())
 print (pygame.display.Info())
