@@ -51,7 +51,7 @@ async def main():
     api = PyiCloudService(username, password)
     cache = FileCache(maxSpace, workingDir)
     screenSaver = ScreenSaver(sensorPin, relayPin)
-    
+
     if api.requires_2sa:
         print("Two-step authentication required. Your trusted devices are:")
         devices = api.trusted_devices
@@ -64,8 +64,14 @@ async def main():
             print ("Failed to send verification code")
             exit(1)
         code = raw_input("Enter Verification Code: ")
-        # print code
-        if not api.validate_verification_code(device, code):
+        retry = 0
+        success = False
+        while retry < 5 and success == False:
+            sleep(1)
+            success = api.validate_verification_code(device, code)
+            retry = retry + 1
+        
+        if not success:
             print ("Failed to verify verification code")
             exit(1)
 
@@ -112,7 +118,7 @@ async def main():
             photo = choice(photolist)
             if photo and photo.dimensions[0] * photo.dimensions[1] < 15000000:
                 print (photo.filename, photo.size, photo.dimensions)
-                filename = cache[photo]
+                filename = await cache[photo]
                 if not filename:
                     print("Photo ", photo.filename, " could not be retrieved. Skipping.")
                     continue

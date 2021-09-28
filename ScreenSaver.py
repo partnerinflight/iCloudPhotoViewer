@@ -16,7 +16,7 @@ class ScreenSaver:
         sensorPin = 11
         relayPin = 13
         GPIO.setup(sensorPin, GPIO.IN)
-        GPIO.setup(relayPin, GPIO.OUT, initial = 1)
+        GPIO.setup(relayPin, GPIO.OUT, initial = 0)
         GPIO.add_event_detect(sensorPin, GPIO.BOTH, self.switchPirState, 600)
         self.event.set()
 
