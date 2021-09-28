@@ -37,7 +37,7 @@ async def main():
         delaySecs = obj["delaySecs"]
         sensorPin = obj["sensorPin"]
         relayPin = obj["relayPin"]
-
+        timeout = obj["screenTimeout"]
         if not username:
             username = obj["userName"]
         if not password:
@@ -50,7 +50,14 @@ async def main():
 
     api = PyiCloudService(username, password)
     cache = FileCache(maxSpace, workingDir)
-    screenSaver = ScreenSaver(sensorPin, relayPin)
+
+
+    if timeout != None and timeout > 0:
+        screenSaver = ScreenSaver(sensorPin, relayPin)
+        timeoutEvent = screenSaver.getWaitEvent()
+    else:
+        timeoutEvent = asyncio.Event()
+        timeoutEvent.set()
 
     if api.requires_2sa:
         print("Two-step authentication required. Your trusted devices are:")
@@ -111,6 +118,9 @@ async def main():
 
     while(1):
         try:
+            # first wait for our timeout, if any. i.e. if the screen is blanking
+            # then there's no point doing further processing.
+            await timeoutEvent
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
                     exit(0)

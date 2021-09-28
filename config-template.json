@@ -7,5 +7,6 @@
     "adornPhotos": false,
     "delaySecs": 10,
     "sensorPin": 11,
-    "relayPin": 13
+    "relayPin": 13,
+    "screenTimeout": 1200
 }
