@@ -1,0 +1,11 @@
+{
+    "albumName": "Frame2",
+    "userName": "<iCloud username>",
+    "password": "<iCloud password>",
+    "workingDir": "/tmp/photos",
+    "maxSpaceGb": 0,
+    "adornPhotos": false,
+    "delaySecs": 10,
+    "sensorPin": 11,
+    "relayPin": 13
+}

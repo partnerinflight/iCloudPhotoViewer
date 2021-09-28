@@ -5,6 +5,7 @@ from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
 from os import path
 from PIL import Image
+import asyncio
 
 canConvertHeif = True
 try:
@@ -40,7 +41,32 @@ class FileCache:
 
         self.cleanup()
 
-    def __getitem__(self, photo): 
+    def _convert_heic(self, fullPath, photo):
+        if not canConvertHeif:
+            return None
+            
+        try:
+            download = photo.download()
+            if download:
+                with open("photo.HEIC", 'wb') as opened_file:
+                    opened_file.write(download.raw.read())
+                    opened_file.close()
+            heif = pyheif.read("photo.HEIC")
+            img = Image.frombytes(
+                heif.mode, 
+                heif.size, 
+                heif.data, 
+                "raw", 
+                heif.mode, 
+                heif.stride)
+            img.save(fullPath, "JPEG")
+        except IOError as err:
+            print(err)
+            return None
+        except PyiCloudAPIResponseException as err:
+            print (err)
+            return None
+    async def __getitem__(self, photo): 
         #try to return filename from cache given photo name. if it's not there, then 
         #download, convert, and save it
 
@@ -58,29 +84,10 @@ class FileCache:
 
         # ok, now we're going to have to download and possibly convert
         if split[1] == ".HEIC":
-            if not canConvertHeif:
-                return None
-            
-            try:
-                download = photo.download()
-                if download:
-                    with open("photo.HEIC", 'wb') as opened_file:
-                        opened_file.write(download.raw.read())
-                        opened_file.close()
-                heif = pyheif.read("photo.HEIC")
-                img = Image.frombytes(
-                    heif.mode, 
-                    heif.size, 
-                    heif.data, 
-                    "raw", 
-                    heif.mode, 
-                    heif.stride)
-                img.save(fullPath, "JPEG")
-            except IOError as err:
-                print(err)
-                return None
-            except PyiCloudAPIResponseException as err:
-                print (err)
+            if (await asyncio.gather(
+                asyncio.to_thread(self._convert_heic(fullPath, photo)), 
+                asyncio.sleep(1)) == None):
+                print("Coroutine HEIC conversion failed")
                 return None
         elif split[1] == ".JPG":
             try:
