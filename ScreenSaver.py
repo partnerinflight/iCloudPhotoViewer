@@ -20,8 +20,8 @@ class ScreenSaver:
     relayPin = 0
 
     def __init__(self, sensorPin, relayPin, timeoutSeconds, event) -> None:
-        logging.info("Initiazing ScreenSaver with SensorPin=", sensorPin, "RelayPin=", relayPin, "timeout=", timeoutSeconds)
-        logging.info("Configuring GPIO: ", GPIO.RPI_INFO)
+        logging.info(f"Initiazing ScreenSaver with (S={sensorPin}, R={relayPin}, Timeout={timeoutSeconds}")
+        logging.info(f"Configuring GPIO: {GPIO.RPI_INFO}")
         GPIO.setmode(GPIO.BOARD)
         self.sensorPin = sensorPin
         self.relayPin = relayPin
@@ -46,11 +46,20 @@ class ScreenSaver:
 
     def switchPirState(self, channel):
         pirState = GPIO.input(channel)
-        logging.info("PIR State: ", pirState)
+        logging.info(f"PIR State: {pirState}")
         if pirState == 1:
             logging.info("Restarting timer")
             self.timer.cancel()
             self.timer = threading.Timer(self.timeout, self.timerFunction)
             self.timer.start()
             self.event.set()
+            if self.screenOn == False:
+                logging.info("Screen was off. Turning on.")
+                toggleMonitor(self.relayPin)
+                self.screenOn = True
+
+    def cleanup(self):
+        logging.info("Cleaning up ScreenSaver")
+        self.timer.cancel()
+        self.event.set()
             

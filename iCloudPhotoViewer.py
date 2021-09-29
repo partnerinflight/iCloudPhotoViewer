@@ -15,8 +15,12 @@ import signal
 import asyncio
 import logging
 
+screenSaver: ScreenSaver = None
+
 def keyboardInterruptHandler(signal, frame):
-    logging.critical("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
+    logging.critical(f"KeyboardInterrupt (ID: {signal}) has been caught. Cleaning up...") 
+    if screenSaver != None:
+        screenSaver.cleanup()
     exit(0)
 
 async def main():
@@ -45,7 +49,7 @@ async def main():
     if not username:
         username = raw_input("Enter iCloud username:")
     if not password:
-        password = getpass("Enter iCloud Password for %s: "%username)
+        password = getpass(f"Enter iCloud Password for {username}")
 
     api = PyiCloudService(username, password)
     cache = FileCache(maxSpace, workingDir)
@@ -60,7 +64,7 @@ async def main():
         devices = api.trusted_devices
         #print devices
         for i, device in enumerate(devices):
-            logging.info ("  %s: %s" % (i, device.get('deviceName', "SMS to %s" % device.get('phoneNumber'))))
+            print("  %s: %s" % (i, device.get('deviceName', "SMS to %s" % device.get('phoneNumber'))))
         device = devices[0]
         print (device)
         if not api.send_verification_code(device):
@@ -105,7 +109,7 @@ async def main():
     for photo in photos:
         photolist.append(photo)
 
-    logging.info("# Fotos in album \"%s\": %d"%(albumName,len(photolist)))
+    logging.info(f"# Fotos in album \"{albumName}\": {len(photolist)}")
 
     pygame.event.set_allowed(pygame.KEYDOWN)
 
