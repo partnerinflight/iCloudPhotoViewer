@@ -123,7 +123,8 @@ class FileCache:
             sortedPhotos = sorted(self.photos.items(), key = lambda item: item[1])
 
             # now start removing until we are good
-            while self.freeSpace < self.usedSpace:
+            retry = 0
+            while self.freeSpace < self.usedSpace and retry < 10:
                 try:
                     file = sortedPhotos[0][0]
                     fullFilePath = self.workingDir + "/" + file
@@ -132,5 +133,6 @@ class FileCache:
                     os.unlink(fullFilePath)
                     self.photos.pop(file)
                 except FileNotFoundError:
+                    retry = retry + 1
                     logging.error(f'Unable to delete {fullFilePath}: not found')
                     continue
