@@ -116,15 +116,20 @@ class FileCache:
 
     def cleanup(self):
         if self.freeSpace < self.usedSpace:
+            logging.info("Cleaning up ", (self.usedSpace - self.freeSpace) << 10, "kb of space")
             # sort dictionary by timestamp, and 
             # start removing oldest
             sortedPhotos = sorted(self.photos.items(), key = lambda item: item[1])
 
             # now start removing until we are good
             while self.freeSpace < self.usedSpace:
-                file = sortedPhotos[0][0]
-                fullFilePath = self.workingDir + "/" + file
-                self.usedSpace -= path.getsize(fullFilePath)
-                print("Cleanup deleting", fullFilePath)
-                os.unlink(fullFilePath)
-                self.photos.pop(file)
+                try:
+                    file = sortedPhotos[0][0]
+                    fullFilePath = self.workingDir + "/" + file
+                    self.usedSpace -= path.getsize(fullFilePath)
+                    print("Cleanup deleting", fullFilePath)
+                    os.unlink(fullFilePath)
+                    self.photos.pop(file)
+                except FileNotFoundError:
+                    logging.error("Unable to delete ", fullFilePath, ": not found")
+                    continue
