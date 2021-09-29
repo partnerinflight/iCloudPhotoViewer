@@ -23,7 +23,7 @@ class FileCache:
     def __init__(self, maxSpace, workingDir) -> None:
         total, used, free = shutil.disk_usage("/")
         self.freeSpace = min(free - 2, maxSpace<<30)
-        logging.info("File Cache using %sGB of space"%self.freeSpace)
+        logging.info('File Cache using %d(GB) of space', self.freeSpace)
 
         if workingDir:
             self.workingDir = workingDir
@@ -34,11 +34,11 @@ class FileCache:
 
         # initialize the photos dict
         self.photos = dict.fromkeys(os.listdir(self.workingDir), time.time())        
-        logging.info("Loaded", len(self.photos), "photos")
+        logging.info('Loaded %d photos', len(self.photos))
 
         for photo in self.photos:
             self.usedSpace += path.getsize(self.workingDir + "/" + photo)
-        logging.info("Photo library currently occupies", self.usedSpace/(1<<30), "GB")
+        logging.info('Photo library currently occupies %d(GB)', self.usedSpace/(1<<30))
 
         self.cleanup()
 
@@ -46,7 +46,7 @@ class FileCache:
         logging.info("Converting", fullPath)
 
         if not canConvertHeif:
-            logging.error("HEIF library not loaded. Conversion failed")
+            logging.error('HEIF library not loaded. Conversion failed')
             return None
             
         try:
@@ -89,9 +89,9 @@ class FileCache:
 
         # ok, now we're going to have to download and possibly convert
         if split[1] == ".HEIC":
-            logging.info("Initiating conversion of HEIC file", fullPath)
+            logging.info('Initiating conversion of HEIC file %s', fullPath)
             if (await asyncio.get_running_loop().run_in_executor(None, self._convert_heic, fullPath, photo) == None):
-                print("Coroutine HEIC conversion failed")
+                logging.error("Coroutine HEIC conversion failed")
                 return None
         elif split[1] == ".JPG":
             try:
@@ -116,7 +116,7 @@ class FileCache:
 
     def cleanup(self):
         if self.freeSpace < self.usedSpace:
-            logging.info("Cleaning up ", (self.usedSpace - self.freeSpace) << 10, "kb of space")
+            logging.info('Cleaning up %d(kb) of space', (self.usedSpace - self.freeSpace) << 10)
             # sort dictionary by timestamp, and 
             # start removing oldest
             sortedPhotos = sorted(self.photos.items(), key = lambda item: item[1])
@@ -127,9 +127,9 @@ class FileCache:
                     file = sortedPhotos[0][0]
                     fullFilePath = self.workingDir + "/" + file
                     self.usedSpace -= path.getsize(fullFilePath)
-                    print("Cleanup deleting", fullFilePath)
+                    print("Cleanup deleting %s", fullFilePath)
                     os.unlink(fullFilePath)
                     self.photos.pop(file)
                 except FileNotFoundError:
-                    logging.error("Unable to delete ", fullFilePath, ": not found")
+                    logging.error('Unable to delete %s: not found', fullFilePath)
                     continue
