@@ -23,7 +23,7 @@ class FileCache:
     def __init__(self, maxSpace, workingDir) -> None:
         total, used, free = shutil.disk_usage("/")
         self.freeSpace = min(free - 2, maxSpace<<30)
-        logging.info(f'File Cache using {self.freespace}(GB) of space' )
+        logging.info(f'File Cache using {self.freeSpace}(GB) of space' )
 
         if workingDir:
             self.workingDir = workingDir
@@ -85,6 +85,7 @@ class FileCache:
 
         if filename in self.photos:
             self.photos[filename] = time.time()
+            logging.info(f'Returning ({filename}) from cache')
             return fullPath
 
         # ok, now we're going to have to download and possibly convert
