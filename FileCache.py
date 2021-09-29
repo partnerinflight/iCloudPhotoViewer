@@ -93,8 +93,7 @@ class FileCache:
         if split[1] == ".HEIC":
             logging.info(f'Initiating conversion of HEIC file {fullPath}')
             loop = asyncio.get_running_loop()
-            result = await asyncio.wait(loop.run_in_executor(None, self._convert_heic, fullPath, photo))
-            logging.info(f'Result of coroutine conversion was {result}')
+            result = await loop.run_in_executor(None, self._convert_heic, fullPath, photo)
             if result == None:
                 logging.error("Coroutine HEIC conversion failed")
                 return None
