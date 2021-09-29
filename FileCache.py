@@ -43,7 +43,7 @@ class FileCache:
         self.cleanup()
 
     def _convert_heic(self, fullPath, photo):
-        logging.info("Converting", fullPath)
+        logging.info(f'Converting {fullPath}')
 
         if not canConvertHeif:
             logging.error('HEIF library not loaded. Conversion failed')
