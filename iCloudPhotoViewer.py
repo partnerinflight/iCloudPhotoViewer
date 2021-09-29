@@ -8,16 +8,15 @@ from os import environ, system, path
 from random import choice
 from time import sleep
 from getpass import getpass
-import sys
-import click
 import json
 from FileCache import FileCache
 from ScreenSaver import ScreenSaver
 import signal
 import asyncio
+import logging
 
 def keyboardInterruptHandler(signal, frame):
-    print("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
+    logging.critical("KeyboardInterrupt (ID: {}) has been caught. Cleaning up...".format(signal)) 
     exit(0)
 
 async def main():
@@ -60,15 +59,15 @@ async def main():
         timeoutEvent.set()
 
     if api.requires_2sa:
-        print("Two-step authentication required. Your trusted devices are:")
+        logging.info("Two-step authentication required. Your trusted devices are:")
         devices = api.trusted_devices
         #print devices
         for i, device in enumerate(devices):
-            print ("  %s: %s" % (i, device.get('deviceName', "SMS to %s" % device.get('phoneNumber'))))
+            logging.info ("  %s: %s" % (i, device.get('deviceName', "SMS to %s" % device.get('phoneNumber'))))
         device = devices[0]
         print (device)
         if not api.send_verification_code(device):
-            print ("Failed to send verification code")
+            logging.error("Failed to send verification code")
             exit(1)
         code = raw_input("Enter Verification Code: ")
         retry = 0
@@ -79,17 +78,17 @@ async def main():
             retry = retry + 1
         
         if not success:
-            print ("Failed to verify verification code")
+            logging.critical("Failed to verify verification code")
             exit(1)
 
-    print ("iCloud Authentication OK !")
+    logging.info("iCloud Authentication OK !")
                     
   
     # Open a window on the screen
     screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
     pygame.mouse.set_visible(0)
-    print (pygame.display.get_driver())
-    print (pygame.display.Info())
+    logging.info(pygame.display.get_driver())
+    logging.info(pygame.display.Info())
 
     if adornPhotos:
         myfont = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
@@ -99,20 +98,17 @@ async def main():
     else:
         albums = []
         for album in api.photos.albums:
-            #  print "Album", album.title()
             albums.append(album.title())
-        # print albums 
 
         if albumName not in albums:
             albumName = choice(albums)
         photos = api.photos.albums[albumName]
 
-    # print type(photos) # pyicloud.services.photos.PhotoAlbum
     photolist = []
     for photo in photos:
         photolist.append(photo)
 
-    #print ("# Fotos in album \"%s\": %d"%(albumName,len(photolist)))
+    logging.info("# Fotos in album \"%s\": %d"%(albumName,len(photolist)))
 
     pygame.event.set_allowed(pygame.KEYDOWN)
 
@@ -130,7 +126,7 @@ async def main():
                 print (photo.filename, photo.size, photo.dimensions)
                 filename = await cache[photo]
                 if not filename:
-                    print("Photo ", photo.filename, " could not be retrieved. Skipping.")
+                    logging.error("Photo ", photo.filename, " could not be retrieved. Skipping.")
                     continue
                 img = Image.open(filename)
                 img.thumbnail(screen.get_size())
@@ -155,9 +151,9 @@ async def main():
 
                 sleep(delaySecs)
             else:
-                print ("skipping large photo")
+                logging.info("skipping large photo")
         except KeyboardInterrupt:
-            print ("Bye!")
+            logging.critical("Bye!")
             exit(0)
 
 asyncio.run(main())
