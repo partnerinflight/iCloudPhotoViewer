@@ -50,13 +50,10 @@ async def main():
     api = PyiCloudService(username, password)
     cache = FileCache(maxSpace, workingDir)
 
-
+    timeoutEvent = asyncio.Event()
+    timeoutEvent.set()
     if timeout != None and timeout > 0:
-        screenSaver = ScreenSaver(sensorPin, relayPin, timeout)
-        timeoutEvent = screenSaver.getWaitEvent()
-    else:
-        timeoutEvent = asyncio.Event()
-        timeoutEvent.set()
+        screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
 
     if api.requires_2sa:
         logging.info("Two-step authentication required. Your trusted devices are:")
@@ -156,4 +153,5 @@ async def main():
             logging.critical("Bye!")
             exit(0)
 
+logging.logging.basicConfig(level=logging.INFO)
 asyncio.run(main())

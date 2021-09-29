@@ -11,7 +11,7 @@ def toggleMonitor(channel):
     GPIO.output(channel, GPIO.LOW)
 
 class ScreenSaver:
-    event = asyncio.Event()
+    event: asyncio.Event = None
     expiryTime = time.monotonic()
     timeout = 3600
     timer: threading.Timer = None
@@ -19,7 +19,7 @@ class ScreenSaver:
     sensorPin = 0
     relayPin = 0
 
-    def __init__(self, sensorPin, relayPin, timeoutSeconds) -> None:
+    def __init__(self, sensorPin, relayPin, timeoutSeconds, event) -> None:
         logging.info("Initiazing ScreenSaver with SensorPin=", sensorPin, "RelayPin=", relayPin, "timeout=", timeoutSeconds)
         logging.info("Configuring GPIO: ", GPIO.RPI_INFO)
         GPIO.setmode(GPIO.BOARD)
@@ -29,12 +29,9 @@ class ScreenSaver:
         GPIO.setup(relayPin, GPIO.OUT, initial = 0)
         GPIO.add_event_detect(sensorPin, GPIO.BOTH, self.switchPirState, 600)
         self.timeout = timeoutSeconds
-        self.event.set()
+        self.event = event
         self.timer = threading.Timer(self.timeout, self.timerFunction)
         self.timer.start()
-
-    def getWaitEvent(self) -> asyncio.Event:
-        return self.event
 
     def timerFunction(self):
         logging.info("Timer fired!")
