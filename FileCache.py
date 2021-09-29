@@ -84,9 +84,7 @@ class FileCache:
 
         # ok, now we're going to have to download and possibly convert
         if split[1] == ".HEIC":
-            if (await asyncio.gather(
-                asyncio.to_thread(self._convert_heic(fullPath, photo)), 
-                asyncio.sleep(1)) == None):
+            if (await asyncio.get_running_loop().run_in_executor(None, self._convert_heic, fullPath, photo) == None):
                 print("Coroutine HEIC conversion failed")
                 return None
         elif split[1] == ".JPG":
