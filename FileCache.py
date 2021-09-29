@@ -64,6 +64,7 @@ class FileCache:
                 heif.mode, 
                 heif.stride)
             img.save(fullPath, "JPEG")
+            return fullPath
         except IOError as err:
             logging.error(err)
             return None
