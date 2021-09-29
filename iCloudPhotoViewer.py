@@ -53,7 +53,7 @@ async def main():
 
 
     if timeout != None and timeout > 0:
-        screenSaver = ScreenSaver(sensorPin, relayPin)
+        screenSaver = ScreenSaver(sensorPin, relayPin, timeout)
         timeoutEvent = screenSaver.getWaitEvent()
     else:
         timeoutEvent = asyncio.Event()
