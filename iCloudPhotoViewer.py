@@ -120,7 +120,7 @@ async def main():
         try:
             # first wait for our timeout, if any. i.e. if the screen is blanking
             # then there's no point doing further processing.
-            await timeoutEvent
+            await timeoutEvent.wait()
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
                     exit(0)
