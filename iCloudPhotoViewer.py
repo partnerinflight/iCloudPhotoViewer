@@ -126,7 +126,7 @@ async def main():
                 print (photo.filename, photo.size, photo.dimensions)
                 filename = await cache[photo]
                 if not filename:
-                    logging.error("Photo ", photo.filename, " could not be retrieved. Skipping.")
+                    logging.error(f'Photo {photo.filename} could not be retrieved. Skipping.')
                     continue
                 img = Image.open(filename)
                 img.thumbnail(screen.get_size())

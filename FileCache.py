@@ -43,7 +43,7 @@ class FileCache:
         self.cleanup()
 
     def _convert_heic(self, fullPath, photo):
-        logging.info(f'Converting {fullPath}')
+        logging.info(f'CoRoutine converting {fullPath}')
 
         if not canConvertHeif:
             logging.error('HEIF library not loaded. Conversion failed')
@@ -91,7 +91,10 @@ class FileCache:
         # ok, now we're going to have to download and possibly convert
         if split[1] == ".HEIC":
             logging.info(f'Initiating conversion of HEIC file {fullPath}')
-            if (await asyncio.get_running_loop().run_in_executor(None, self._convert_heic, fullPath, photo) == None):
+            loop = asyncio.get_running_loop()
+            result = await asyncio.wait(loop.run_in_executor(None, self._convert_heic, fullPath, photo))
+            logging.info(f'Result of coroutine conversion was {result}')
+            if result == None:
                 logging.error("Coroutine HEIC conversion failed")
                 return None
         elif split[1] == ".JPG":
