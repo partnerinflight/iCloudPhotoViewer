@@ -41,8 +41,6 @@ class ScreenSaver:
             self.screenOn = False
             self.event.clear()
         self.timer.cancel()
-        self.timer = threading.Timer(self.timeout, self.timerFunction)
-        self.timer.start()
 
     def switchPirState(self, channel):
         pirState = GPIO.input(channel)
