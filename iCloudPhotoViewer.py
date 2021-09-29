@@ -153,5 +153,5 @@ async def main():
             logging.critical("Bye!")
             exit(0)
 
-logging.logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 asyncio.run(main())
