@@ -5,6 +5,7 @@
     "workingDir": "/tmp/photos",
     "maxSpaceGb": 0,
     "adornPhotos": false,
+    "resizeImage": true,
     "delaySecs": 10,
     "sensorPin": 11,
     "relayPin": 13,

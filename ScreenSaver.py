@@ -1,10 +1,17 @@
-import RPi.GPIO as GPIO
+
 import time
 import asyncio
 import threading
 import logging
+runningOnPi = True
+try:
+    import RPi.GPIO as GPIO
+except ModuleNotFoundError:
+    runningOnPi = False
 
 def toggleMonitor(channel):
+    if not runningOnPi:
+        return
     logging.info("Toggling monitor state")
     GPIO.output(channel, GPIO.HIGH)
     time.sleep(.5)
@@ -20,14 +27,17 @@ class ScreenSaver:
     relayPin = 0
 
     def __init__(self, sensorPin, relayPin, timeoutSeconds, event) -> None:
-        logging.info(f"Initiazing ScreenSaver with (S={sensorPin}, R={relayPin}, Timeout={timeoutSeconds}")
-        logging.info(f"Configuring GPIO: {GPIO.RPI_INFO}")
-        GPIO.setmode(GPIO.BOARD)
-        self.sensorPin = sensorPin
-        self.relayPin = relayPin
-        GPIO.setup(sensorPin, GPIO.IN)
-        GPIO.setup(relayPin, GPIO.OUT, initial = 0)
-        GPIO.add_event_detect(sensorPin, GPIO.BOTH, self.switchPirState, 600)
+        logging.info(f"Initiazing ScreenSaver with (S={sensorPin}, R={relayPin}, Timeout={timeoutSeconds})")
+        if runningOnPi:
+            logging.info(f"Configuring GPIO: {GPIO.RPI_INFO}")
+            GPIO.setmode(GPIO.BOARD)
+            self.sensorPin = sensorPin
+            self.relayPin = relayPin
+            GPIO.setup(sensorPin, GPIO.IN)
+            GPIO.setup(relayPin, GPIO.OUT, initial = 0)
+            GPIO.add_event_detect(sensorPin, GPIO.BOTH, self.switchPirState, 600)
+        else:
+            logging.warn(f"Not running on a Pi.")
         self.timeout = timeoutSeconds
         self.event = event
         self.timer = threading.Timer(self.timeout, self.timerFunction)
