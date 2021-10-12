@@ -161,7 +161,7 @@ async def main():
                     img.thumbnail(screen.get_size())
                 
                 if adornPhotos:
-                    drawOnImage(img, photo.name, [20, 20], myfontLarge)
+                    drawOnImage(img, photo.name, [20, 20], myfontLarge, True)
 
                 # convert to pygame image
                 image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
