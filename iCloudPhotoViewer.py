@@ -15,6 +15,7 @@ import signal
 import asyncio
 import logging
 from resizeimage import resizeimage
+from datetime import datetime
 
 screenSaver: ScreenSaver = None
 timeoutEvent = asyncio.Event()
@@ -187,5 +188,5 @@ async def main():
         except KeyboardInterrupt:
             cleanup()
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename=f"{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", encoding='utf-8', level=logging.INFO, format='%(asctime)s %(message)s')
 asyncio.run(main())
