@@ -158,7 +158,7 @@ async def main():
                 if not filename:
                     logging.error(f'Photo {photo.filename} could not be retrieved. Skipping.')
                     continue
-                
+                logging.info(f"Conversion of {photo.filename} completed.")
                 tsize = screen.get_size()
                 img = Image.open(filename)
                 if resizeImage:
@@ -167,7 +167,8 @@ async def main():
                 img.thumbnail(screen.get_size())
                 
                 if adornPhotos:
-                    drawOnImage(img, photo.name, [20, 20], myfontLarge, True)
+                    logging.info(f"Drawing {photo.filename} on the image")
+                    drawOnImage(img, photo.filename, [20, 20], myfontLarge, True)
 
                 # convert to pygame image
                 image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
