@@ -26,7 +26,7 @@ def cleanup():
     logging.info("CLEANUP: SettingTimeoutEvent")
     timeoutEvent.set()
     logging.info("CLEANUP: Exiting")
-    _exit()
+    _exit(0)
 
 def keyboardInterruptHandler(signal, frame):
     cleanup()
@@ -187,5 +187,5 @@ async def main():
         except KeyboardInterrupt:
             cleanup()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 asyncio.run(main())
