@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
 from sys import exit
-from os import environ, system, path
+from os import environ, system, path, _exit
 from random import choice
 from time import sleep
 from getpass import getpass
@@ -14,6 +14,7 @@ from ScreenSaver import ScreenSaver
 import signal
 import asyncio
 import logging
+from resizeimage import resizeimage
 
 screenSaver: ScreenSaver = None
 timeoutEvent = asyncio.Event()
@@ -25,7 +26,7 @@ def keyboardInterruptHandler(signal, frame):
     print("CLEANUP: SettingTimeoutEvent")
     timeoutEvent.set()
     print("CLEANUP: Exiting")
-    exit(0)
+    _exit()
 
 def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFont, emboss: bool):
     draw = ImageDraw.Draw(image)
@@ -158,8 +159,7 @@ async def main():
                 tsize = screen.get_size()
                 img = Image.open(filename)
                 if resizeImage:
-                    size = max(tsize[0], tsize[1])
-                    img.thumbnail([size, size])
+                    img = resizeimage.resize_cover(img, tsize)
                 else:
                     img.thumbnail(screen.get_size())
                 
@@ -175,11 +175,6 @@ async def main():
                 screen.fill([0,0,0])
                 screen.blit(image, [(tsize[0]-ssize[0])/2,(tsize[1]-ssize[1])/2])
                 pygame.display.flip() # display update
-
-                event = pygame.event.wait(delaySecs * 1000)
-                if event != pygame.NOEVENT and event.type == pygame.KEYDOWN and chr(event.key) == 'q':
-                    logging.critical("Got an exit command. Exiting...")
-                    return
             else:
                 logging.info("skipping large photo")
         except KeyboardInterrupt:
