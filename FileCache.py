@@ -139,3 +139,8 @@ class FileCache:
                     retry = retry + 1
                     logging.error(f'Unable to delete {fullFilePath}: not found')
                     continue
+                except PermissionError:
+                    logging.error(f'Unable to delete {fullFilePath}: permissions')
+                    retry = retry + 1
+                    continue
+

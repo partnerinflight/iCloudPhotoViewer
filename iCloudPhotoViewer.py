@@ -16,11 +16,13 @@ import asyncio
 import logging
 
 screenSaver: ScreenSaver = None
+timeoutEvent = asyncio.Event()
 
 def keyboardInterruptHandler(signal, frame):
     logging.critical(f"KeyboardInterrupt (ID: {signal}) has been caught. Cleaning up...") 
     if screenSaver != None:
         screenSaver.cleanup()
+    timeoutEvent.set()
     exit(0)
 
 def drawOnImage(image: Image, text: str, coordinates: tuple[float, float], font: ImageFont.FreeTypeFont, emboss: bool):
@@ -86,7 +88,6 @@ async def main():
 
     cache = FileCache(maxSpace, workingDir)
 
-    timeoutEvent = asyncio.Event()
     timeoutEvent.set()
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
