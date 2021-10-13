@@ -22,10 +22,12 @@ def keyboardInterruptHandler(signal, frame):
     logging.critical(f"KeyboardInterrupt (ID: {signal}) has been caught. Cleaning up...") 
     if screenSaver != None:
         screenSaver.cleanup()
+    print("CLEANUP: SettingTimeoutEvent")
     timeoutEvent.set()
+    print("CLEANUP: Exiting")
     exit(0)
 
-def drawOnImage(image: Image, text: str, coordinates: tuple[float, float], font: ImageFont.FreeTypeFont, emboss: bool):
+def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFont, emboss: bool):
     draw = ImageDraw.Draw(image)
     if emboss:
         draw.text([coordinates[0] - 1, coordinates[0] - 1], text, fill=(000,000,000), font=font)
