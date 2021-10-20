@@ -20,6 +20,10 @@ from datetime import datetime
 screenSaver: ScreenSaver = None
 timeoutEvent = asyncio.Event()
 
+with open('config.json', 'r') as config:
+    obj = json.load(config)
+    logToFile = obj["logToFile"]
+
 def cleanup():
     logging.critical("CLEANUP: Cleaning up...") 
     if screenSaver != None:
@@ -65,15 +69,15 @@ def authenticate(username, password) -> PyiCloudService:
 
 async def main():
     signal.signal(signal.SIGINT, keyboardInterruptHandler)
+  
     # fetch config data
     albumName = 'Frame2'
-
     username = ""
     password = ""
 
     with open('config.json', 'r') as config:
         obj = json.load(config)
-        album = obj["albumName"]
+        albumName = obj["albumName"]
         workingDir = obj["workingDir"]
         maxSpace = obj["maxSpaceGb"]
         adornPhotos = obj["adornPhotos"]
@@ -86,16 +90,13 @@ async def main():
             username = obj["userName"]
         if not password:
             password = obj["password"]
-
+        
     if not username:
         username = raw_input("Enter iCloud username:")
     if not password:
         password = getpass(f"Enter iCloud Password for {username}")
     authenticate(username, password)
 
-    cache = FileCache(maxSpace, workingDir)
-
-    timeoutEvent.set()
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
 
@@ -107,8 +108,7 @@ async def main():
         api = authenticate(username, password)
         retry = retry + 1
     logging.info("iCloud Authentication OK !")
-                    
-  
+                     
     # Open a window on the screen
     environ["DISPLAY"]=":0,0"
     pygame.display.init()
@@ -120,25 +120,10 @@ async def main():
     if adornPhotos:
         myfontLarge = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
         myfontSmall = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 14)
-
-    if not album:
-        photos = api.photos.all
-    else:
-        albums = []
-        for album in api.photos.albums:
-            albums.append(album.title())
-
-        if albumName not in albums:
-            albumName = choice(albums)
-        photos = api.photos.albums[albumName]
-
-    photolist = []
-    for photo in photos:
-        photolist.append(photo)
-
-    logging.info(f"# Fotos in album \"{albumName}\": {len(photolist)}")
-
+ 
     pygame.event.set_allowed(pygame.KEYDOWN)
+
+    cache = FileCache(maxSpace, workingDir, albumName, screen.get_size(), api, timeoutEvent, resizeImage)
 
     while(1):
         try:
@@ -151,42 +136,29 @@ async def main():
                         return
                 except ValueError:
                     continue
-                
-            photo = choice(photolist)
-            if photo and photo.dimensions[0] * photo.dimensions[1] < 15000000:
-                print (photo.filename, photo.size, photo.dimensions)
-                filename = await cache[photo]
-                if not filename:
-                    logging.error(f'Photo {photo.filename} could not be retrieved. Skipping.')
-                    continue
-                logging.info(f"Conversion of {photo.filename} completed.")
-                tsize = screen.get_size()
-                img = Image.open(filename)
-                if resizeImage:
-                    img = resizeimage.resize_cover(img, tsize)
+            img = cache.nextPhoto()
 
-                img.thumbnail(screen.get_size())
-                
-                if adornPhotos:
-                    logging.info(f"Drawing {photo.filename} on the image")
-                    drawOnImage(img, photo.filename, [20, 20], myfontLarge, True)
+            # if adornPhotos:
+            #     logging.info(f"Drawing {photo.filename} on the image")
+            #     drawOnImage(img, photo.filename, [20, 20], myfontLarge, True)
 
-                # convert to pygame image
-                image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
-                image = image.convert()
+            # convert to pygame image
+            image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
+            image = image.convert()
 
-                # center and draw
-                ssize = img.size
-                screen.fill([0,0,0])
-                screen.blit(image, [(tsize[0]-ssize[0])/2,(tsize[1]-ssize[1])/2])
-                pygame.display.flip() # display update
-                event = pygame.event.wait(delaySecs * 1000)
-                if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
-                    cleanup()
-            else:
-                logging.info("skipping large photo")
+            # center and draw
+            screen.fill([255,0,0])
+            screen.blit(image, [0,0])
+            pygame.display.flip() # display update
+            event = pygame.event.wait(delaySecs * 1000)
+            if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
+                cleanup()
         except KeyboardInterrupt:
             cleanup()
 
-logging.basicConfig(filename=f"{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", encoding='utf-8', level=logging.INFO, format='%(asctime)s %(message)s')
+if logToFile:
+    logging.basicConfig(filename=f"{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
+
 asyncio.run(main())
