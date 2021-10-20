@@ -136,11 +136,11 @@ async def main():
                         return
                 except ValueError:
                     continue
-            img = cache.nextPhoto()
+            img, total, number, name = cache.nextPhoto()
 
-            # if adornPhotos:
-            #     logging.info(f"Drawing {photo.filename} on the image")
-            #     drawOnImage(img, photo.filename, [20, 20], myfontLarge, True)
+            if adornPhotos:
+                logging.info(f"Drawing {name} on the image")
+                drawOnImage(img, f"{name}: {number}/{total}", [img.size[0] - 200, img.size[1] - 60], myfontSmall, True)
 
             # convert to pygame image
             image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)

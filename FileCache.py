@@ -79,12 +79,13 @@ class FileCache:
             return None
         
         # now return a random photo in the list
-        photo = choice(list(self.photos.keys()))
+        photosList = list(self.photos.keys())
+        photo = choice(photosList)
         self.photos[photo] = time.time()
 
         image = Image.open(self.workingDir + "/" + photo)
 
-        return image
+        return image, len(photosList), photosList.index(photo), photo
 
     def worker(self):
         logging.info("Started FileCache Worker Thread")
