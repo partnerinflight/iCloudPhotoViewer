@@ -84,10 +84,7 @@ class FileCache:
 
         image = Image.open(self.workingDir + "/" + photo)
 
-        #just as test
-        return self._scan_and_resize(image, photo)
-
-        #return image
+        return image
 
     def worker(self):
         logging.info("Started FileCache Worker Thread")
