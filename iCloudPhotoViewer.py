@@ -17,7 +17,7 @@ import logging
 from resizeimage import resizeimage
 from datetime import datetime
 
-screenSaver: ScreenSaver = None
+screenSaver = None
 timeoutEvent = asyncio.Event()
 
 with open('config.json', 'r') as config:
