@@ -44,7 +44,6 @@ class ScreenSaver:
         self.timer.start()
 
     def timerFunction(self):
-        logging.info("Timer fired!")
         if self.screenOn:
             logging.info("Screen was on. Turning off")
             toggleMonitor(self.relayPin)
@@ -54,9 +53,7 @@ class ScreenSaver:
 
     def switchPirState(self, channel):
         pirState = GPIO.input(channel)
-        logging.info(f"PIR State: {pirState}")
         if pirState == 1:
-            logging.info("Restarting timer")
             self.timer.cancel()
             self.timer = threading.Timer(self.timeout, self.timerFunction)
             self.timer.start()
