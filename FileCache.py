@@ -162,7 +162,7 @@ class FileCache:
             if self.blocked:
                 self.blocked = False
                 self.blockEvent.set()
-            logging.info(f"Total Local Storage Photos After Cleanup: {len(self.photos.keys)}")
+            logging.info(f"Total Local Storage Photos After Cleanup: {len(photolist)}")
  
 
     def usePhoto(self, photo, extension, exclusions) -> bool:
