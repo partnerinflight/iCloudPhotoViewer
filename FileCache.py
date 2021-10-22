@@ -43,8 +43,8 @@ class FileCache:
         self.api = api
         self.resize = resize
         total, used, free = shutil.disk_usage("/")
-        self.freeSpace = min(free - 2, maxSpace<<30)
-        logging.info(f'File Cache using {self.freeSpace}(GB) of space' )
+        self.freeSpace = min(free - 2, maxSpace * (1<<30))
+        logging.info(f'File Cache using {self.freeSpace / (1<<30)}(GB) of space' )
 
         if workingDir:
             self.workingDir = workingDir
@@ -70,6 +70,7 @@ class FileCache:
 
         workerThread = Thread(target = self.worker)
 
+        workerThread.start()
         self.cleanupCache()
 
     def nextPhoto(self) -> Image:
@@ -80,6 +81,8 @@ class FileCache:
         
         # now return a random photo in the list
         photosList = list(self.photos.keys())
+        logging.info(f"Next Image Requested, Library Size {len(photosList)} photos")
+
         photo = choice(photosList)
         self.photos[photo] = time.time()
 
