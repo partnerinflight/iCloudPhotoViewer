@@ -70,7 +70,7 @@ async def main():
     signal.signal(signal.SIGINT, keyboardInterruptHandler)
   
     timeoutEvent = asyncio.Event()
-    
+
     # fetch config data
     albumName = 'Frame2'
     username = ""
@@ -137,7 +137,7 @@ async def main():
                         return
                 except ValueError:
                     continue
-            img, total, number, name = cache.nextPhoto()
+            img, total, number, name = await cache.nextPhoto()
 
             if adornPhotos:
                 logging.info(f"Drawing {name} on the image")
