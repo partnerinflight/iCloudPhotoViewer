@@ -31,7 +31,7 @@ class FileCache:
     albumName: str
     screenSize = [0,0]
     api: PyiCloudService
-    blockEvent: Event
+    blockEvent: asyncio.Event
     blocked: False
     resize: bool = True
 
@@ -81,7 +81,7 @@ class FileCache:
             return None
         
         # wait until there's something in the library
-        await self.blockedEvent.wait()
+        await self.blockEvent.wait()
 
         # now return a random photo in the list
         photosList = list(self.photos.keys())
