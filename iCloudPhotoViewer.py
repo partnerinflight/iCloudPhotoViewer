@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 
 screenSaver = None
-timeoutEvent = asyncio.Event()
+timeoutEvent = None
 
 with open('config.json', 'r') as config:
     obj = json.load(config)
@@ -69,6 +69,8 @@ def authenticate(username, password) -> PyiCloudService:
 async def main():
     signal.signal(signal.SIGINT, keyboardInterruptHandler)
   
+    timeoutEvent = asyncio.Event()
+    
     # fetch config data
     albumName = 'Frame2'
     username = ""
