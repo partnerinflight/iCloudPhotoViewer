@@ -14,7 +14,6 @@ from ScreenSaver import ScreenSaver
 import signal
 import asyncio
 import logging
-from resizeimage import resizeimage
 from datetime import datetime
 
 screenSaver = None
