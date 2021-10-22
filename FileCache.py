@@ -81,12 +81,14 @@ class FileCache:
         if self.finished:
             return None
         
+        logging.info("Waiting for next photo")
+
         # wait until there's something in the library
         await self.blockEvent.wait()
 
         # now return a random photo in the list
         photosList = list(self.photos.keys())
-        logging.info(f"Next Image Requested, Library Size {len(photosList)} photos")
+        logging.info(f"Returning, Library Size {len(photosList)} photos")
 
         photo = choice(photosList)
         self.photos[photo] = time.time()
