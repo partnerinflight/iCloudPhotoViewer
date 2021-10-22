@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 
 screenSaver = None
-timeoutEvent = None
+timeoutEvent : asyncio.Event = None
 
 with open('config.json', 'r') as config:
     obj = json.load(config)
