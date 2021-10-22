@@ -127,7 +127,7 @@ class FileCache:
             if photo in excludedList:
                 continue
 
-            if not self.usePhoto(photo, split[1]):
+            if not self.usePhoto(photo, split[1], excludedList):
                 excludedList.append(photo)
                 continue
         
