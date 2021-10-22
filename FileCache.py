@@ -19,6 +19,7 @@ canConvertHeif = True
 try:
     import pyheif
 except ModuleNotFoundError:
+    logging.error("HEIC Conversion is disabled")
     canConvertHeif = False
 
 class FileCache:
