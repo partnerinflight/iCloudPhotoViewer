@@ -64,6 +64,7 @@ class FileCache:
         # block until we have some photos to display
         if len(self.photos.keys()) > 0:
             self.blockEvent.set()
+            self.blocked = False
         else:
             self.blockEvent.clear()
             self.blocked = True
@@ -73,12 +74,15 @@ class FileCache:
         workerThread.start()
         self.cleanupCache()
 
-    def nextPhoto(self) -> Image:
+    async def nextPhoto(self) -> Image:
         # return a random image from the ones already on disk
 
         if self.finished:
             return None
         
+        # wait until there's something in the library
+        await self.blockedEvent.wait()
+
         # now return a random photo in the list
         photosList = list(self.photos.keys())
         logging.info(f"Next Image Requested, Library Size {len(photosList)} photos")
