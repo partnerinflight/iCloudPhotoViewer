@@ -128,6 +128,7 @@ class FileCache:
                 continue
 
             if not self.usePhoto(photo, split[1], excludedList):
+                logging.warning(f"Photo {photo.filename} is not usable")
                 excludedList.append(photo)
                 continue
         
@@ -156,18 +157,19 @@ class FileCache:
             self.photos[fileName] = time.time()
             self.usedSpace += path.getsize(fullPath)
 
-            logging.info(f"Total Local Storage Photos Before Cleanup: {len(photolist)}")
+            savedPhotos = list(self.photos.keys())
+            logging.info(f"Total Local Storage Photos Before Cleanup: {len(savedPhotos)}")
             # cleanup the cache. notice we'll never go down to zero photos; we leave one
             self.cleanupCache()
             if self.blocked:
                 self.blocked = False
                 self.blockEvent.set()
-            logging.info(f"Total Local Storage Photos After Cleanup: {len(photolist)}")
+            logging.info(f"Total Local Storage Photos After Cleanup: {len(savedPhotos)}")
  
 
     def usePhoto(self, photo, extension, exclusions) -> bool:
-        canUseFormat = extension == ".JPG" or (canConvertHeif and extension == ".HEIC")
-        return photo and photo not in self.photos and photo.dimensions[0] * photo.dimensions[1] < 15000000 and canUseFormat
+        canUseFormat = extension == ".JPEG" or (canConvertHeif and extension == ".HEIC")
+        return photo and canUseFormat and photo not in self.photos and photo not in exclusions and photo.dimensions[0] * photo.dimensions[1] < 15000000
 
 
     def _scan_and_resize(self, image:Image, name: str) -> Image:
