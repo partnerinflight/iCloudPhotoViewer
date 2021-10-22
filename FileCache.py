@@ -156,7 +156,7 @@ class FileCache:
             self.photos[fileName] = time.time()
             self.usedSpace += path.getsize(fullPath)
 
-            logging.info(f"Total Local Storage Photos Before Cleanup: {len(self.photos.keys)}")
+            logging.info(f"Total Local Storage Photos Before Cleanup: {len(photolist)}")
             # cleanup the cache. notice we'll never go down to zero photos; we leave one
             self.cleanupCache()
             if self.blocked:
@@ -171,6 +171,7 @@ class FileCache:
 
 
     def _scan_and_resize(self, image:Image, name: str) -> Image:
+        logging.info(f"Scanning and Resizing {name}")
         # first resize the image
         screenAspectRatio = self.screenSize[0] / self.screenSize[1]
         imageAspectRatio = image.size[0] / image.size[1]
@@ -180,6 +181,7 @@ class FileCache:
             percent = self.screenSize[0] / image.size[0]
 
         newSize = (trunc(image.size[0] * percent), trunc(image.size[1] * percent))
+        logging.info(f"Resizing {name} to {newSize}")
         image = image.resize(newSize)
 
         # now, do the face recognition block on that image
@@ -206,6 +208,7 @@ class FileCache:
             if endX > image.size[0]:
                 startX = max(0, startX - (endX - image.size[0]))
                 endX = image.size[0]
+            logging.info(f"Cropping {name} to {startX}, {startY}, {endX}, {endY}")
             image = image.crop((startX, 0, endX, image.size[1]))
 
         if image.size[1] > self.screenSize[1]:
@@ -225,6 +228,7 @@ class FileCache:
             if endY > image.size[0]:
                 startY = max(0, startY - (endX - image.size[0]))
                 endY = image.size[0]
+            logging.info(f"Cropping {name} to {startX}, {startY}, {endX}, {endY}")
             image = image.crop((0, startY, image.size[0], endY))
 
         return image
