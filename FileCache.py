@@ -190,7 +190,14 @@ class FileCache:
         image = image.resize(newSize)
 
         # now, do the face recognition block on that image
-        startX, startY, endX, endY = self._get_face_bounding_rect(image, name)
+        numFaces, startX, startY, endX, endY = self._get_face_bounding_rect(image, name)
+
+        if numFaces == 0:
+            logging.warning(f"No faces detected in {name}")
+            # just thumbnail the image to screen size, don't attempt to intelligently
+            # resize it
+            image.thumbnail(self.screenSize)
+            return image
 
         # now we simply need to see how to best crop the resulting image
         # we're already in screen coordinate frame
@@ -260,7 +267,7 @@ class FileCache:
                 startX = location[3]
         logging.info(f"Faces bounding box: {startX},{startY}--{endX}, {endY}")
 
-        return startX, startY, endX, endY
+        return len(face_locations), startX, startY, endX, endY
 
     def _download_jpeg(self, photo) -> Image:
         try:
