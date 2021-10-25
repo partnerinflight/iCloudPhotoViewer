@@ -20,7 +20,7 @@ import debugpy
 stderr = open('../error.log', 'w')
 if len(argv) > 1 and "debug" in argv:
     print("Debug mode enabled")
-    debugpy.listen(3000)
+    debugpy.listen(5678)
     debugpy.wait_for_client()
 
 screenSaver = None

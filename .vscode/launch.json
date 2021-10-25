@@ -17,7 +17,7 @@
             "request": "attach",
             "localRoot": "${workspaceRoot}",
             "remoteRoot": "/home/pi/iCloudPhotoViewer",
-            "port": 3000,
+            "port": 5678,
             "secret": "my_secret",
             "host": "192.168.1.6",
           //  "preLaunchTask": "remote-deploy-debug"
