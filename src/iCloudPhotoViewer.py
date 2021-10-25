@@ -15,13 +15,13 @@ import signal
 import asyncio
 import logging
 from datetime import datetime
-import ptvsd
+import debugpy
 
 stderr = open('../error.log', 'w')
 if len(argv) > 1 and "debug" in argv:
     print("Debug mode enabled")
-    ptvsd.enable_attach("my_secret", address = ('0.0.0.0', 3000))
-    ptvsd.wait_for_attach()
+    debugpy.listen(3000)
+    debugpy.wait_for_client()
 
 screenSaver = None
 timeoutEvent : asyncio.Event = None
