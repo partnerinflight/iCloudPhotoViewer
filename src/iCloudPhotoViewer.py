@@ -3,7 +3,7 @@ import pygame
 from PIL import Image, ImageDraw, ImageFont
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
-from sys import exit
+from sys import exit, argv, stderr
 from os import environ, system, path, _exit
 from random import choice
 from time import sleep
@@ -15,7 +15,13 @@ import signal
 import asyncio
 import logging
 from datetime import datetime
+import ptvsd
 
+stderr = open('../error.log', 'w')
+if argv.count > 1 and "debug" in argv:
+    ptvsd.enable_attach("my_secret", address = ('0.0.0.0', 3000))
+    ptvsd.wait_for_attach()
+    
 screenSaver = None
 timeoutEvent : asyncio.Event = None
 
