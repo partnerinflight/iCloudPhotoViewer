@@ -19,9 +19,10 @@ import ptvsd
 
 stderr = open('../error.log', 'w')
 if argv.count > 1 and "debug" in argv:
+    print("Debug mode enabled")
     ptvsd.enable_attach("my_secret", address = ('0.0.0.0', 3000))
     ptvsd.wait_for_attach()
-    
+
 screenSaver = None
 timeoutEvent : asyncio.Event = None
 
