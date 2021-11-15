@@ -20,7 +20,7 @@
             "port": 5678,
             "secret": "my_secret",
             "host": "192.168.1.6",
-          //  "preLaunchTask": "remote-deploy-debug"
+            "preLaunchTask": "remote-deploy-debug"
         }
     ]
 }

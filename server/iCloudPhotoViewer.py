@@ -1,4 +1,4 @@
-from six.moves import input as raw_input
+
 import pygame
 from PIL import Image, ImageDraw, ImageFont
 from pyicloud import PyiCloudService
@@ -15,22 +15,19 @@ import signal
 import asyncio
 import logging
 from datetime import datetime
-import debugpy
-
-stderr = open('../error.log', 'w')
-if len(argv) > 1 and "debug" in argv:
-    print("Debug mode enabled")
-    debugpy.listen(5678)
-    debugpy.wait_for_client()
+from WebFrontend import webApp, WebFrontEnd
+import threading
 
 screenSaver = None
 timeoutEvent : asyncio.Event = None
 
-with open('config.json', 'r') as config:
+configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
+with open(configPath, 'r') as config:
     obj = json.load(config)
     logToFile = obj["logToFile"]
 
 def cleanup():
+    global timeoutEvent
     logging.critical("CLEANUP: Cleaning up...") 
     if screenSaver != None:
         screenSaver.cleanup()
@@ -50,30 +47,9 @@ def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFo
         draw.text([coordinates[0] + 1, coordinates[0] + 1], text, fill=(000,000,000), font=font)
         draw.text([coordinates[0] - 1, coordinates[0] + 1], text, fill=(000,000,000), font=font)
     draw.text([coordinates[0] + 1, coordinates[0] + 1], text, fill=(255,222,000), font=font)
-    
-def authenticate(username, password) -> PyiCloudService:
-    api = PyiCloudService(username, password)
-    success = True
-    if api.requires_2sa:
-            logging.info("Two-step authentication required. Your trusted devices are:")
-            devices = api.trusted_devices
-            #print devices
-            for i, device in enumerate(devices):
-                print("  %s: %s" % (i, device.get('deviceName', "SMS to %s" % device.get('phoneNumber'))))
-            device = devices[0]
-            print (device)
-            if not api.send_verification_code(device):
-                logging.error("Failed to send verification code")
-                exit(1)
-            code = raw_input("Enter Verification Code: ")
-            retry = 0
-            success = api.validate_verification_code(device, code)
-    if success:
-        return api
-    else:
-        return None
 
-async def main():
+async def slideshow():
+    global timeoutEvent
     signal.signal(signal.SIGINT, keyboardInterruptHandler)
   
     timeoutEvent = asyncio.Event()
@@ -83,7 +59,7 @@ async def main():
     username = ""
     password = ""
 
-    with open('config.json', 'r') as config:
+    with open(configPath, 'r') as config:
         obj = json.load(config)
         albumName = obj["albumName"]
         workingDir = obj["workingDir"]
@@ -99,21 +75,23 @@ async def main():
         if not password:
             password = obj["password"]
         
-    if not username:
-        username = raw_input("Enter iCloud username:")
-    if not password:
-        password = getpass(f"Enter iCloud Password for {username}")
-    authenticate(username, password)
+    # if not username:
+    #     username = raw_input("Enter iCloud username:")
+    # if not password:
+    #     password = getpass(f"Enter iCloud Password for {username}")
+    frontEnd = WebFrontEnd(username, password)
+
+    frontEnd.authenticate()
 
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
 
     retry = 0
-    api = authenticate(username, password)
+    api = frontEnd.authenticate()
     while api == None and retry < 3:
         logging.warn(f"iCloud authentication failed, attempt = {retry}")
         sleep(5)
-        api = authenticate(username, password)
+        api = frontEnd.authenticate()
         retry = retry + 1
     logging.info("iCloud Authentication OK !")
                      
@@ -148,7 +126,7 @@ async def main():
 
             if adornPhotos:
                 logging.info(f"Drawing {name} on the image")
-                drawOnImage(img, f"{name}: {number}/{total}", [img.size[0] - 200, img.size[1] - 60], myfontSmall, True)
+                drawOnImage(img, f"{name}: {number}/{total}", [img.size[0] - 200, img.size[1] - 60], myfontLarge, True)
 
             # convert to pygame image
             image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
@@ -164,9 +142,21 @@ async def main():
         except KeyboardInterrupt:
             cleanup()
 
+def runWebApp():
+    logging.info("Starting web app")
+    webApp.run(use_reloader=False, threaded=True)
+
+async def main():
+    mainTask = asyncio.create_task(slideshow())
+    await asyncio.gather(asyncio.to_thread(runWebApp), mainTask)
+
 if logToFile:
     logging.basicConfig(filename=f"{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
 else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 
-asyncio.run(main())
+if __name__ == '__main__':  # If the script that was run is this script (we have not been imported)
+    host_name = "0.0.0.0"
+    port = 5001
+    threading.Thread(target=lambda: webApp.run(host=host_name, port=port, use_reloader=False)).start()
+    asyncio.run(slideshow())
