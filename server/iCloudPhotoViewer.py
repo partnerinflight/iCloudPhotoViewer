@@ -15,7 +15,7 @@ import signal
 import asyncio
 import logging
 from datetime import datetime
-from WebFrontend import webApp, WebFrontEnd
+from WebFrontend import webApp, WebFrontEnd, frontEnd
 import threading
 
 screenSaver = None
@@ -79,21 +79,19 @@ async def slideshow():
     #     username = raw_input("Enter iCloud username:")
     # if not password:
     #     password = getpass(f"Enter iCloud Password for {username}")
-    frontEnd = WebFrontEnd(username, password)
-
-    frontEnd.authenticate()
+    global frontEnd
+    frontEnd.setCredentials(username, password)
 
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
 
-    retry = 0
-    api = frontEnd.authenticate()
-    while api == None and retry < 3:
-        logging.warn(f"iCloud authentication failed, attempt = {retry}")
-        sleep(5)
-        api = frontEnd.authenticate()
-        retry = retry + 1
-    logging.info("iCloud Authentication OK !")
+    # retry = 0
+    # while api == None and retry < 3:
+    #     logging.warn(f"iCloud authentication failed, attempt = {retry}")
+    #     sleep(5)
+    #     api = frontEnd.authenticate()
+    #     retry = retry + 1
+    # logging.info("iCloud Authentication OK !")
                      
     # Open a window on the screen
     environ["DISPLAY"]=":0,0"
@@ -109,7 +107,7 @@ async def slideshow():
  
     pygame.event.set_allowed(pygame.KEYDOWN)
 
-    cache = FileCache(maxSpace, workingDir, albumName, screen.get_size(), api, timeoutEvent, resizeImage)
+    cache = FileCache(maxSpace, workingDir, albumName, screen.get_size(), timeoutEvent, resizeImage)
 
     while(1):
         try:

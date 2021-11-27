@@ -1,23 +1,41 @@
-import logo from './logo.svg';
 import './App.css';
+import { Spinner } from 'reactstrap';
+import React, { useState, useEffect } from 'react';
+import MfaDeviceChoice from './MfaDeviceChoice';
+import MfaCodeEntry from './MfaCodeEntry';
+
+const statusMap = {
+  "Querying": 0,
+  "NotLoggedIn": 1,
+  "NeedToSendMFACode": 2,
+  "WaitingForMFACode": 3,
+  "LoggedIn": 4,
+}
 
 function App() {
+  const [ status, setStatus ] = useState(0);
+  console.log(`In App, status is ${status}`)
+  async function getStatus() {
+    const response = await fetch('/api/status');
+    const body = await response.json();
+    return statusMap[body["status"]];
+  }
+
+  useEffect(() => {
+    console.log("In useEffect");
+    async function retrieveStatus() {
+      setStatus(await getStatus());
+    }
+    retrieveStatus();
+  }, []);
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      {(status === 0 && <Spinner animation="border" variant="primary" />) ||
+       (status === 1 && <div>Not logged in</div>) ||
+       (status === 2 && <MfaDeviceChoice setStatus={(status) => setStatus(statusMap[status])}/>) ||
+       (status === 3 && <MfaCodeEntry setStatus={(status) => setStatus(statusMap[status])}/>) ||
+       (status === 4 && <div>Logged in</div>)}
     </div>
   );
 }
