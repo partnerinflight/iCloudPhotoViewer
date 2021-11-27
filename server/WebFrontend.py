@@ -106,6 +106,6 @@ def mfa_device_choice():
 @webApp.route('/api/mfa_code', methods=['POST'])
 def mfa():
     global frontEnd
-
-    frontEnd.validateCode(request.form['code'])
+    codeJson = json.loads(request.data)
+    frontEnd.validateCode(codeJson['code'])
     return frontEnd.getStatus()
