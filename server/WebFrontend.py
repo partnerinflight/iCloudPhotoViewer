@@ -19,11 +19,18 @@ class WebFrontEnd:
     devices = None
     api: PyiCloudService = None
     fetcher: iCloudFileFetcher = None
-
+    mfaDevice: None
     def setCredentials(self, userName, password):
         self.userName = userName
         self.password = password
         self.authenticate(userName, password)
+
+    def setFetcher(self, fetcher):
+        self.fetcher = fetcher
+
+    def setLoggedIn(self):
+        self.status = Status.LoggedIn
+        self.fetcher.setApi(self.api)
 
     def authenticate(self, userName, password) -> PyiCloudService:
         try:
@@ -35,6 +42,8 @@ class WebFrontEnd:
                 logging.info("Two-step authentication required.")
                 self.devices = self.api.trusted_devices
                 logging.info(self.devices)
+            
+            self.setLoggedIn()
         except:
             logging.error("Failed to authenticate")
             self.status = Status.NotLoggedIn
@@ -45,7 +54,8 @@ class WebFrontEnd:
         if not device:
             print("Device not found")
             return
-
+        
+        self.chosenDevice = device
         if not self.api.send_verification_code(device):
             logging.error("Failed to send verification code")
             self.status = Status.NotLoggedIn
@@ -54,9 +64,9 @@ class WebFrontEnd:
             self.status = Status.WaitingForMFACode
 
     def validateCode(self, code):
-        if self.api.validate_verification_code(self.devices[0], code):
-            self.status = Status.LoggedIn
-            # TODO Kick off the receiver here...
+        logging.info(f"Received code ${code}")
+        if self.api.validate_verification_code(self.chosenDevice, code):
+            self.setLoggedIn()
         else:
             self.status = Status.NotLoggedIn
             self.api = None
@@ -73,8 +83,9 @@ class WebFrontEnd:
         self.status = status
 
 frontEnd = WebFrontEnd()
-
 webApp = Flask(__name__, static_url_path='')
+
+
 @webApp.route('/')
 def home():
     return webApp.send_static_file('index.html')

@@ -15,7 +15,8 @@ import signal
 import asyncio
 import logging
 from datetime import datetime
-from WebFrontend import webApp, WebFrontEnd, frontEnd
+from WebFrontend import webApp, frontEnd
+from iCloudFileFetcher import iCloudFileFetcher
 import threading
 
 screenSaver = None
@@ -50,12 +51,12 @@ def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFo
 
 async def slideshow():
     global timeoutEvent
-    signal.signal(signal.SIGINT, keyboardInterruptHandler)
+  #  signal.signal(signal.SIGINT, keyboardInterruptHandler)
   
     timeoutEvent = asyncio.Event()
 
     # fetch config data
-    albumName = 'Frame2'
+    albumName = ""
     username = ""
     password = ""
 
@@ -75,24 +76,15 @@ async def slideshow():
         if not password:
             password = obj["password"]
         
-    # if not username:
-    #     username = raw_input("Enter iCloud username:")
-    # if not password:
-    #     password = getpass(f"Enter iCloud Password for {username}")
+    cloudFetcher = iCloudFileFetcher(albumName, resizeImage)
+
     global frontEnd
+    frontEnd.setFetcher(cloudFetcher)
     frontEnd.setCredentials(username, password)
 
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
-
-    # retry = 0
-    # while api == None and retry < 3:
-    #     logging.warn(f"iCloud authentication failed, attempt = {retry}")
-    #     sleep(5)
-    #     api = frontEnd.authenticate()
-    #     retry = retry + 1
-    # logging.info("iCloud Authentication OK !")
-                     
+                 
     # Open a window on the screen
     environ["DISPLAY"]=":0,0"
     pygame.display.init()
@@ -110,35 +102,35 @@ async def slideshow():
     cache = FileCache(maxSpace, workingDir, albumName, screen.get_size(), timeoutEvent, resizeImage)
 
     while(1):
-        try:
-            # first wait for our timeout, if any. i.e. if the screen is blanking
-            # then there's no point doing further processing.
-            await timeoutEvent.wait()
-            for event in pygame.event.get():
-                try:
-                    if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
-                        return
-                except ValueError:
-                    continue
-            img, total, number, name = await cache.nextPhoto()
+       # try:
+        # first wait for our timeout, if any. i.e. if the screen is blanking
+        # then there's no point doing further processing.
+        await timeoutEvent.wait()
+        for event in pygame.event.get():
+            try:
+                if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
+                    return
+            except ValueError:
+                continue
+        img, total, number, name = await cache.nextPhoto()
 
-            if adornPhotos:
-                logging.info(f"Drawing {name} on the image")
-                drawOnImage(img, f"{name}: {number}/{total}", [img.size[0] - 200, img.size[1] - 60], myfontLarge, True)
+        if adornPhotos:
+            logging.info(f"Drawing {name} on the image")
+            drawOnImage(img, f"{name}: {number}/{total}", [img.size[0] - 200, img.size[1] - 60], myfontLarge, True)
 
-            # convert to pygame image
-            image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
-            image = image.convert()
+        # convert to pygame image
+        image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
+        image = image.convert()
 
-            # center and draw
-            screen.fill([255,0,0])
-            screen.blit(image, [0,0])
-            pygame.display.flip() # display update
-            event = pygame.event.wait(delaySecs * 1000)
-            if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
-                cleanup()
-        except KeyboardInterrupt:
+        # center and draw
+        screen.fill([255,0,0])
+        screen.blit(image, [0,0])
+        pygame.display.flip() # display update
+        event = pygame.event.wait(delaySecs * 1000)
+        if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
             cleanup()
+        # except KeyboardInterrupt:
+        #     cleanup()
 
 def runWebApp():
     logging.info("Starting web app")

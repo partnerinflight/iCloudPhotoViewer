@@ -24,18 +24,23 @@ class iCloudFileFetcher:
     photos = dict()
     workingDir = "/tmp/photos"
     screenSize = [0,0]
-    blockEvent: asyncio.Event
     resize: bool = True
     workerThread: Thread
     albumName: str
     finished: bool = False
-
-    def __init__(self, albumName: str = None, resize: bool = True, blockEvent: asyncio.Event = None):
+    status = "Waiting for iCloud Credentials"
+    
+    def __init__(self, albumName: str = None, resize: bool = True):
         self.finished = False
         self.albumName = albumName
         self.resize = resize
-        self.blockEvent = blockEvent
         self.workerThread = Thread(target=self.worker)
+
+    def getStatus(self):
+        return self.status
+
+    def getNumPhotos(self):
+        return len(self.photos)
 
     def setApi(self, api: PyiCloudService):
         self.api = api
@@ -46,6 +51,7 @@ class iCloudFileFetcher:
     def worker(self):
         logging.info("Started FileCache Worker Thread")
 
+        self.status = "Fetching Photos"
         # first let's get the full list of the photos
         if not self.albumName:
             logging.info("AlbumName not provided, using all photos")
@@ -84,10 +90,10 @@ class iCloudFileFetcher:
             logging.info(f"Examining photo {photo.filename}")
             # convert/download photo from icloud
             if (split[1] == ".HEIC"):
-                logging.info(f"Converting {photo.filename}")
+                self.status = f"Converting {photo.filename}"
                 image = self._convert_heic(photo, split[0])
             else:
-                logging.info(f"Downloading {photo.filename}")
+                self.status = f"Downloading {photo.filename}"
                 image = self._download_jpeg(photo)
 
             if image == None:
@@ -110,9 +116,6 @@ class iCloudFileFetcher:
             logging.info(f"Total Local Storage Photos Before Cleanup: {len(savedPhotos)}")
             # cleanup the cache. notice we'll never go down to zero photos; we leave one
             self.cleanupCache()
-            if self.blocked:
-                self.blocked = False
-                self.blockEvent.set()
             logging.info(f"Total Local Storage Photos After Cleanup: {len(savedPhotos)}")
  
 
