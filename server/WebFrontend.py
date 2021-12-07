@@ -121,7 +121,7 @@ def mfa():
     frontEnd.validateCode(codeJson['code'])
     return frontEnd.getStatus()
 
-@webApp.route('api/downloader_status', methods=['GET'])
+@webApp.route('/api/downloader_status', methods=['GET'])
 def downloader_status():
     global frontEnd
     return json.dumps({
