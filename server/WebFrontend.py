@@ -42,8 +42,8 @@ class WebFrontEnd:
                 logging.info("Two-step authentication required.")
                 self.devices = self.api.trusted_devices
                 logging.info(self.devices)
-            
-            self.setLoggedIn()
+            else:
+                self.setLoggedIn()
         except:
             logging.error("Failed to authenticate")
             self.status = Status.NotLoggedIn
