@@ -120,3 +120,12 @@ def mfa():
     codeJson = json.loads(request.data)
     frontEnd.validateCode(codeJson['code'])
     return frontEnd.getStatus()
+
+@webApp.route('api/downloader_status', methods=['GET'])
+def downloader_status():
+    global frontEnd
+    return json.dumps({
+        'status': frontEnd.fetcher.getStatus(),
+        'album': frontEnd.fetcher.getAlbum(),
+        'numPhotos': frontEnd.fetcher.getNumPhotos(),
+    })

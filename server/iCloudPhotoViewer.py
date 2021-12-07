@@ -37,9 +37,6 @@ def cleanup():
     logging.info("CLEANUP: Exiting")
     _exit(0)
 
-def keyboardInterruptHandler(signal, frame):
-    cleanup()
-
 def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFont, emboss: bool):
     draw = ImageDraw.Draw(image)
     if emboss:
@@ -50,9 +47,7 @@ def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFo
     draw.text([coordinates[0] + 1, coordinates[0] + 1], text, fill=(255,222,000), font=font)
 
 async def slideshow():
-    global timeoutEvent
-  #  signal.signal(signal.SIGINT, keyboardInterruptHandler)
-  
+    global timeoutEvent  
     timeoutEvent = asyncio.Event()
 
     # fetch config data

@@ -7,7 +7,6 @@ import numpy as np
 from threading import Event, Thread
 from random import choice
 from math import trunc
-from numpy.typing import _96Bit
 from PIL import Image
 from os import path
 import time
@@ -42,6 +41,9 @@ class iCloudFileFetcher:
     def getNumPhotos(self):
         return len(self.photos)
 
+    def getAlbum(self):
+        return self.albumName
+        
     def setApi(self, api: PyiCloudService):
         self.api = api
         if api:
