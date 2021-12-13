@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 class iCloudFileFetcher:    
     api: PyiCloudService = None
     photos = dict()
+    photosList = []
     workingDir = "/tmp/photos"
     screenSize = [0,0]
     resize: bool = True
@@ -39,6 +40,9 @@ class iCloudFileFetcher:
         return self.status
 
     def getNumPhotos(self):
+        return len(self.photosList)
+
+    def getNumPhotosProcessed(self):
         return len(self.photos)
 
     def getAlbum(self):
@@ -50,15 +54,11 @@ class iCloudFileFetcher:
             logging.info("Got a valid API. Starting fetcher")
             self.workerThread.start()
         
-    def worker(self):
-        logging.info("Started FileCache Worker Thread")
-
-        self.status = "Fetching Photos"
-        # first let's get the full list of the photos
+    def setPhotosList(self):
         if not self.albumName:
             logging.info("AlbumName not provided, using all photos")
-            photos = self.api.photos.all
-            logging.info(f'Fetched {len(photos)} photos')
+            photosList = self.api.photos.all
+            logging.info(f'Fetched {len(photosList)} photos')
         else:
             albums = []
             for album in self.api.photos.albums:
@@ -66,30 +66,39 @@ class iCloudFileFetcher:
 
             if self.albumName not in albums:
                 self.albumName = choice(albums)
-            photos = self.api.photos.albums[self.albumName]
-            logging.info(f"# Fotos in album \"{self.albumName}\": {len(photos)}")
+            photosList = self.api.photos.albums[self.albumName]
+            logging.info(f"# Fotos in album \"{self.albumName}\": {len(photosList)}")
+            for photo in photosList:
+                self.photosList.append(photo)
 
-        photolist = []
-        excludedList = []
+    def worker(self):
+        logging.info("Started FileCache Worker Thread")
 
-        for photo in photos:
-            photolist.append(photo)
+        self.status = "Fetching Photos"
+        # first let's get the full list of the photos
+        self.setPhotosList()
 
         while not self.finished:
+            if len(self.photosList) == 0:
+                # we're down to zero. reinitialize photos list from scratch
+                self.setPhotosList()
+ 
+            if len(self.photosList) == 0:
+                self.status = "No photos found"
+                break # if we're here, something's very wrong
+                
             # main retrieval loop
             # pick a photo from the list, then convert it / resize it / save it
             # keep doing that. When we fill up the file cache, start deleting files
-            photo = choice(photolist)
+            photo = choice(self.photosList)
             split = path.splitext(photo.filename)
-            if photo in excludedList:
-                continue
 
-            if not self.usePhoto(photo, split[1], excludedList):
+            if not self.usePhoto(photo, split[1]):
                 logging.warning(f"Photo {photo.filename} is not usable")
-                excludedList.append(photo)
+                self.photosList.remove(photo)
                 continue
         
-            logging.info(f"Examining photo {photo.filename}")
+            self.status = f"Examining photo {photo.filename}"
             # convert/download photo from icloud
             if (split[1] == ".HEIC"):
                 self.status = f"Converting {photo.filename}"
@@ -113,17 +122,13 @@ class iCloudFileFetcher:
             image.save(fullPath, "JPEG")
             self.photos[fileName] = time.time()
             self.usedSpace += path.getsize(fullPath)
-
-            savedPhotos = list(self.photos.keys())
-            logging.info(f"Total Local Storage Photos Before Cleanup: {len(savedPhotos)}")
+            self.photosList.remove(photo)
             # cleanup the cache. notice we'll never go down to zero photos; we leave one
-            self.cleanupCache()
-            logging.info(f"Total Local Storage Photos After Cleanup: {len(savedPhotos)}")
- 
+            self.cleanupCache() 
 
-    def usePhoto(self, photo, extension, exclusions) -> bool:
+    def usePhoto(self, photo, extension) -> bool:
         canUseFormat = extension == ".JPEG" or (canConvertHeif and extension == ".HEIC")
-        return photo and canUseFormat and photo not in self.photos and photo not in exclusions and photo.dimensions[0] * photo.dimensions[1] < 15000000
+        return photo and canUseFormat and photo not in self.photos and photo.dimensions[0] * photo.dimensions[1] < 15000000
 
 
     def _scan_and_resize(self, image:Image, name: str) -> Image:

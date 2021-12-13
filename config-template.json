@@ -10,5 +10,6 @@
     "sensorPin": 11,
     "relayPin": 13,
     "screenTimeout": 1200,
-    "logToFile": true
+    "logToFile": true,
+    "skipDisplay": false
 }

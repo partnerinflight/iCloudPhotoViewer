@@ -29,6 +29,7 @@ class WebFrontEnd:
         self.fetcher = fetcher
 
     def setLoggedIn(self):
+        logging.info("Logged in, sending API to fetcher")
         self.status = Status.LoggedIn
         self.fetcher.setApi(self.api)
 
@@ -100,7 +101,8 @@ def status():
 @webApp.route('/api/login', methods=['POST'])
 def login():
     global frontEnd
-    frontEnd.authenticate(request.form['userName'], request.form['password'])
+    json = request.get_json()
+    frontEnd.authenticate(json['userName'], json['password'])
     return frontEnd.getStatus()
 
 @webApp.route('/api/mfa_device_choice', methods=['GET', 'POST'])
@@ -128,4 +130,5 @@ def downloader_status():
         'status': frontEnd.fetcher.getStatus(),
         'album': frontEnd.fetcher.getAlbum(),
         'numPhotos': frontEnd.fetcher.getNumPhotos(),
+        'numPhotosProcessed': frontEnd.fetcher.getNumPhotosProcessed(),
     })

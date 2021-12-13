@@ -3,6 +3,8 @@ import { Spinner } from 'reactstrap';
 import React, { useState, useEffect } from 'react';
 import MfaDeviceChoice from './MfaDeviceChoice';
 import MfaCodeEntry from './MfaCodeEntry';
+import Login from './Login';
+import FileFetcherStatus from './FileFetcherStatus';
 
 const statusMap = {
   "Querying": 0,
@@ -32,10 +34,10 @@ function App() {
   return (
     <div className="App">
       {(status === 0 && <Spinner animation="border" variant="primary" />) ||
-       (status === 1 && <div>Not logged in</div>) ||
+       (status === 1 && <Login setStatus={(status) => setStatus(statusMap[status])}/>) ||
        (status === 2 && <MfaDeviceChoice setStatus={(status) => setStatus(statusMap[status])}/>) ||
        (status === 3 && <MfaCodeEntry setStatus={(status) => setStatus(statusMap[status])}/>) ||
-       (status === 4 && <div>Logged in</div>)}
+       (status === 4 && <FileFetcherStatus/>)}
     </div>
   );
 }

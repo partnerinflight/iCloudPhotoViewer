@@ -66,6 +66,7 @@ async def slideshow():
         relayPin = obj["relayPin"]
         resizeImage = obj["resizeImage"]
         timeout = obj["screenTimeout"]
+        skipDisplay = obj["skipDisplay"]
         if not username:
             username = obj["userName"]
         if not password:
@@ -81,6 +82,9 @@ async def slideshow():
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
                  
     # Open a window on the screen
+    if skipDisplay:
+        return
+        
     environ["DISPLAY"]=":0,0"
     pygame.display.init()
     screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
