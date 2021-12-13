@@ -48,6 +48,10 @@ class iCloudFileFetcher:
     def getAlbum(self):
         return self.albumName
         
+    def setScreenSize(self, size: list):
+        logging.info(f"Setting screen size to {size}")
+        self.screenSize = size
+
     def setApi(self, api: PyiCloudService):
         self.api = api
         if api:

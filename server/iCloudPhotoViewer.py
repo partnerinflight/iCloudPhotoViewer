@@ -84,13 +84,14 @@ async def slideshow():
     # Open a window on the screen
     if skipDisplay:
         return
-        
+
     environ["DISPLAY"]=":0,0"
     pygame.display.init()
     screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
     pygame.mouse.set_visible(0)
     logging.info(pygame.display.get_driver())
     logging.info(pygame.display.Info())
+    cloudFetcher.setScreenSize(pygame.display.Info().current_w, pygame.display.Info().current_h)
 
     if adornPhotos:
         myfontLarge = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
