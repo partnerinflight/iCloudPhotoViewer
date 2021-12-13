@@ -91,7 +91,7 @@ async def slideshow():
     pygame.mouse.set_visible(0)
     logging.info(pygame.display.get_driver())
     logging.info(pygame.display.Info())
-    cloudFetcher.setScreenSize(pygame.display.Info().current_w, pygame.display.Info().current_h)
+    cloudFetcher.setScreenSize([pygame.display.Info().current_w, pygame.display.Info().current_h])
 
     if adornPhotos:
         myfontLarge = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
