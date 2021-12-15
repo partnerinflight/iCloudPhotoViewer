@@ -125,10 +125,10 @@ class iCloudFileFetcher:
             logging.info(f"Saving {fullPath}.")
             image.save(fullPath, "JPEG")
             self.photos[fileName] = time.time()
-            self.usedSpace += path.getsize(fullPath)
+            #self.usedSpace += path.getsize(fullPath)
             self.photosList.remove(photo)
             # cleanup the cache. notice we'll never go down to zero photos; we leave one
-            self.cleanupCache() 
+            #self.cleanupCache() 
 
     def usePhoto(self, photo, extension) -> bool:
         canUseFormat = extension == ".JPEG" or (canConvertHeif and extension == ".HEIC")
