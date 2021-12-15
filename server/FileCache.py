@@ -37,12 +37,7 @@ class FileCache:
             os.makedirs(self.workingDir)
 
         # initialize the photos dict
-        self.photos = dict.fromkeys(os.listdir(self.workingDir), time.time())        
-        logging.info(f'Loaded {len(self.photos)} photos')
-
-        for photo in self.photos:
-            self.usedSpace += path.getsize(self.workingDir + "/" + photo)
-        logging.info(f'Photo library currently occupies {self.usedSpace/(1<<30)}(GB)')
+        self.loadPhotos()
 
         # block until we have some photos to display
         if len(self.photos.keys()) > 0:
@@ -52,6 +47,14 @@ class FileCache:
             self.blockEvent.clear()
             self.blocked = True
         self.cleanupCache()
+
+    def loadPhotos(self):
+        self.photos = dict.fromkeys(os.listdir(self.workingDir), time.time())        
+        logging.info(f'Loaded {len(self.photos)} photos')
+
+        for photo in self.photos:
+            self.usedSpace += path.getsize(self.workingDir + "/" + photo)
+        logging.info(f'Photo library currently occupies {self.usedSpace/(1<<30)}(GB)')
 
     async def nextPhoto(self) -> Image:
         # return a random image from the ones already on disk
@@ -63,6 +66,8 @@ class FileCache:
 
         # wait until there's something in the library
         await self.blockEvent.wait()
+
+        self.loadPhotos()   
 
         # now return a random photo in the list
         photosList = list(self.photos.keys())
