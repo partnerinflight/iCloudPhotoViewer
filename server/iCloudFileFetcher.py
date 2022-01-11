@@ -1,15 +1,16 @@
+import pygame
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
 import logging
-import asyncio
 import face_recognition
 import numpy as np
-from threading import Event, Thread
-from random import choice
+from threading import Thread
+from random import randint, choice
 from math import trunc
 from PIL import Image
-from os import path
-import time
+from os import environ, path
+from FileCache import FileCache
+from pyicloud.services.photos import PhotoAlbum
 
 canConvertHeif = True
 try:
@@ -21,7 +22,7 @@ except ModuleNotFoundError:
 class iCloudFileFetcher:    
     api: PyiCloudService = None
     photos = dict()
-    photosList = []
+    photosAlbum: PhotoAlbum = None
     workingDir = "/tmp/photos"
     screenSize = [0,0]
     resize: bool = True
@@ -29,28 +30,35 @@ class iCloudFileFetcher:
     albumName: str
     finished: bool = False
     status = "Waiting for iCloud Credentials"
-    
-    def __init__(self, albumName: str = None, resize: bool = True):
+    cache: FileCache = None
+
+    def __init__(self, albumName: str, resize: bool, maxSize, workingDir):
+        logging.getLogger().setLevel(logging.INFO)
         self.finished = False
         self.albumName = albumName
         self.resize = resize
+        self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
+        environ["DISPLAY"]=":0,0"
+        pygame.display.init()
+        screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
+        self.screenSize = screen.get_size()
+        pygame.display.quit()
 
     def getStatus(self):
         return self.status
 
     def getNumPhotos(self):
-        return len(self.photosList)
+        if self.photosAlbum != None:
+            return len(self.photosAlbum)
+        else:
+            return 0
 
     def getNumPhotosProcessed(self):
         return len(self.photos)
 
     def getAlbum(self):
         return self.albumName
-        
-    def setScreenSize(self, size: list):
-        logging.info(f"Setting screen size to {size}")
-        self.screenSize = size
 
     def setApi(self, api: PyiCloudService):
         self.api = api
@@ -60,9 +68,7 @@ class iCloudFileFetcher:
         
     def setPhotosList(self):
         if not self.albumName:
-            logging.info("AlbumName not provided, using all photos")
-            photosList = self.api.photos.all
-            logging.info(f'Fetched {len(photosList)} photos')
+            self.photosAlbum = self.api.photos.all
         else:
             albums = []
             for album in self.api.photos.albums:
@@ -70,69 +76,79 @@ class iCloudFileFetcher:
 
             if self.albumName not in albums:
                 self.albumName = choice(albums)
-            photosList = self.api.photos.albums[self.albumName]
-            logging.info(f"# Fotos in album \"{self.albumName}\": {len(photosList)}")
-            for photo in photosList:
-                self.photosList.append(photo)
+            self.photosAlbum = len(self.api.photos.albums[self.albumName])
+        logging.info(f"# Fotos in album \"{self.photosAlbum.title}\": {len(self.photosAlbum)}")
 
     def worker(self):
         logging.info("Started FileCache Worker Thread")
-
         self.status = "Fetching Photos"
-        # first let's get the full list of the photos
         self.setPhotosList()
-
+        finishedIndexes = []
+        albumSize = len(self.photosAlbum)
         while not self.finished:
-            if len(self.photosList) == 0:
-                # we're down to zero. reinitialize photos list from scratch
-                self.setPhotosList()
- 
-            if len(self.photosList) == 0:
-                self.status = "No photos found"
-                break # if we're here, something's very wrong
-                
+            if (len(finishedIndexes) == albumSize):
+                self.finished = True
+                self.status = "Finished"
+                break
+
             # main retrieval loop
             # pick a photo from the list, then convert it / resize it / save it
             # keep doing that. When we fill up the file cache, start deleting files
-            photo = choice(self.photosList)
-            split = path.splitext(photo.filename)
-
-            if not self.usePhoto(photo, split[1]):
-                logging.warning(f"Photo {photo.filename} is not usable")
-                self.photosList.remove(photo)
-                continue
-        
-            self.status = f"Examining photo {photo.filename}"
-            # convert/download photo from icloud
-            if (split[1] == ".HEIC"):
-                self.status = f"Converting {photo.filename}"
-                image = self._convert_heic(photo, split[0])
-            else:
-                self.status = f"Downloading {photo.filename}"
-                image = self._download_jpeg(photo)
-
-            if image == None:
-                logging.error(f"Failed to download image {photo.filename}")
-                continue
+            photoIndex = randint(0, albumSize - 1)
             
-            fileName = split[0] + ".JPEG"
-            logging.info(f"Download successful.")
-            if self.resize:
-                image = self._scan_and_resize(image, fileName)
-                # and now just save it
-                logging.info(f"Resize of {fileName} successful.")
-            fullPath = self.workingDir + "/" + fileName
-            logging.info(f"Saving {fullPath}.")
-            image.save(fullPath, "JPEG")
-            self.photos[fileName] = time.time()
-            #self.usedSpace += path.getsize(fullPath)
-            self.photosList.remove(photo)
-            # cleanup the cache. notice we'll never go down to zero photos; we leave one
-            #self.cleanupCache() 
+            if photoIndex in finishedIndexes:
+                continue
+
+            # try fetching the photo
+            try:
+                for photo in self.photosAlbum.photo(photoIndex):
+                    self.processPhoto(photo)
+                    photoIndex = photoIndex + 1
+            except:
+                logging.error("Could not fetch photo index " + str(photoIndex))
+            finally:
+                finishedIndexes.append(photoIndex)
+
+    def processPhoto(self, photo):
+        logging.info(f"Picked photo {photo.filename} for processing")
+        split = path.splitext(photo.filename)
+
+        if not self.usePhoto(photo, split[1]):
+            logging.warning(f"Photo {photo.filename} is not usable")
+            raise Exception("Photo is not usable")
+    
+        self.status = f"Examining photo {photo.filename}"
+        # convert/download photo from icloud
+        if (split[1] == ".HEIC"):
+            self.status = f"Converting {photo.filename}"
+            image = self._convert_heic(photo, split[0])
+        else:
+            self.status = f"Downloading {photo.filename}"
+            image = self._download_jpeg(photo)
+
+        if image == None:
+            logging.error(f"Failed to download image {photo.filename}")
+            raise Exception("Failed to download image")
+        
+        fileName = split[0] + ".JPEG"
+        logging.info(f"Download successful.")
+        if self.resize:
+            image = self._scan_and_resize(image, fileName)
+            # and now just save it
+            logging.info(f"Resize of {fileName} successful.")
+        fullPath = self.workingDir + "/" + fileName
+        logging.info(f"Saving {fullPath}.")
+        image.save(fullPath, "JPEG")
+        self.cache.addPhotoToCache(fileName, fullPath)
 
     def usePhoto(self, photo, extension) -> bool:
-        canUseFormat = extension == ".JPEG" or (canConvertHeif and extension == ".HEIC")
-        return photo and canUseFormat and photo not in self.photos and photo.dimensions[0] * photo.dimensions[1] < 15000000
+        extension = extension.upper()
+        canUseFormat = extension == ".JPEG" or extension == ".JPG" or (canConvertHeif and extension == ".HEIC")
+        return photo \
+            and canUseFormat \
+            and photo not in self.photos \
+            and not self.cache.isPhotoInCache(photo) \
+            and photo.dimensions[0] * photo.dimensions[1] < 15000000
 
 
     def _scan_and_resize(self, image:Image, name: str) -> Image:

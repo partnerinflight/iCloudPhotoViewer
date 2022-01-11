@@ -1,11 +1,17 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+import datetime
+from flask import Flask, request
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
 import logging
-from os import _exit
 import enum
 import json
 from iCloudFileFetcher import iCloudFileFetcher
+from os import path
+
+configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
+with open(configPath, 'r') as config:
+    obj = json.load(config)
+    logToFile = obj["logToFile"]
 
 class Status(enum.Enum):
     NotLoggedIn = 1
@@ -20,13 +26,15 @@ class WebFrontEnd:
     api: PyiCloudService = None
     fetcher: iCloudFileFetcher = None
     mfaDevice: None
+    fetcher: iCloudFileFetcher = None
+
+    def __init__(self, fetcher):
+        self.fetcher = fetcher
+
     def setCredentials(self, userName, password):
         self.userName = userName
         self.password = password
         self.authenticate(userName, password)
-
-    def setFetcher(self, fetcher):
-        self.fetcher = fetcher
 
     def setLoggedIn(self):
         logging.info("Logged in, sending API to fetcher")
@@ -83,9 +91,7 @@ class WebFrontEnd:
     def setStatus(self, status):
         self.status = status
 
-frontEnd = WebFrontEnd()
 webApp = Flask(__name__, static_url_path='')
-
 
 @webApp.route('/')
 def home():
@@ -132,3 +138,27 @@ def downloader_status():
         'numPhotos': frontEnd.fetcher.getNumPhotos(),
         'numPhotosProcessed': frontEnd.fetcher.getNumPhotosProcessed(),
     })
+
+ # fetch config data
+with open(configPath, 'r') as config:
+    obj = json.load(config)
+    albumName = obj["albumName"]
+    workingDir = obj["workingDir"]
+    maxSpace = obj["maxSpaceGb"]
+    resizeImage = obj["resizeImage"]
+    logToFile = obj["logToFile"]
+
+if logToFile:
+    logging.basicConfig(filename=f"view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
+
+# setup major parts of the system
+fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir)
+frontEnd = WebFrontEnd(fetcher)
+
+logging.info("Starting web app")
+webApp.run(use_reloader=False, threaded=True)
+host_name = "0.0.0.0"
+port = 5001
+webApp.run(host=host_name, port=port)

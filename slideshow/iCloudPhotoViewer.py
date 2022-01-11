@@ -1,23 +1,15 @@
 
 import pygame
 from PIL import Image, ImageDraw, ImageFont
-from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudAPIResponseException
-from sys import exit, argv, stderr
-from os import environ, system, path, _exit
-from random import choice
-from time import sleep
-from getpass import getpass
+from os import environ, path, _exit
 import json
-from FileCache import FileCache
 from ScreenSaver import ScreenSaver
-import signal
 import asyncio
 import logging
 from datetime import datetime
-from WebFrontend import webApp, frontEnd
-from iCloudFileFetcher import iCloudFileFetcher
-import threading
+import os
+
+from random import choice
 
 screenSaver = None
 timeoutEvent : asyncio.Event = None
@@ -46,37 +38,33 @@ def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFo
         draw.text([coordinates[0] - 1, coordinates[0] + 1], text, fill=(000,000,000), font=font)
     draw.text([coordinates[0] + 1, coordinates[0] + 1], text, fill=(255,222,000), font=font)
 
-async def slideshow():
+def nextPhoto(workingDir) -> Image:
+    # return a random image from the ones already on disk
+    photos = os.listdir(workingDir)
+    if len(photos) == 0:
+        logging.info('No photos found in library')
+        return None
+    logging.info(f'Found {len(photos)} photos in library')
+
+    photo = choice(photos)
+    logging.info(f'Selected {photo}')
+    img = Image.open(path.join(workingDir, photo))
+    return img, len(photos), photos.index(photo), photo
+
+def slideshow():
     global timeoutEvent  
     timeoutEvent = asyncio.Event()
 
     # fetch config data
-    albumName = ""
-    username = ""
-    password = ""
-
     with open(configPath, 'r') as config:
         obj = json.load(config)
-        albumName = obj["albumName"]
         workingDir = obj["workingDir"]
-        maxSpace = obj["maxSpaceGb"]
         adornPhotos = obj["adornPhotos"]
         delaySecs = obj["delaySecs"]
         sensorPin = obj["sensorPin"]
         relayPin = obj["relayPin"]
-        resizeImage = obj["resizeImage"]
         timeout = obj["screenTimeout"]
         skipDisplay = obj["skipDisplay"]
-        if not username:
-            username = obj["userName"]
-        if not password:
-            password = obj["password"]
-        
-    cloudFetcher = iCloudFileFetcher(albumName, resizeImage)
-
-    global frontEnd
-    frontEnd.setFetcher(cloudFetcher)
-    frontEnd.setCredentials(username, password)
 
     if timeout != None and timeout > 0:
         screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
@@ -91,7 +79,6 @@ async def slideshow():
     pygame.mouse.set_visible(0)
     logging.info(pygame.display.get_driver())
     logging.info(pygame.display.Info())
-    cloudFetcher.setScreenSize([pygame.display.Info().current_w, pygame.display.Info().current_h])
 
     if adornPhotos:
         myfontLarge = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
@@ -99,20 +86,16 @@ async def slideshow():
  
     pygame.event.set_allowed(pygame.KEYDOWN)
 
-    cache = FileCache(maxSpace, workingDir, albumName, screen.get_size(), timeoutEvent, resizeImage)
+    logging.info("SLIDESHOW: Starting slideshow")
 
     while(1):
-       # try:
-        # first wait for our timeout, if any. i.e. if the screen is blanking
-        # then there's no point doing further processing.
-        await timeoutEvent.wait()
         for event in pygame.event.get():
             try:
                 if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
                     return
             except ValueError:
                 continue
-        img, total, number, name = await cache.nextPhoto()
+        img, total, number, name = nextPhoto(workingDir)
 
         if adornPhotos:
             logging.info(f"Drawing {name} on the image")
@@ -129,24 +112,12 @@ async def slideshow():
         event = pygame.event.wait(delaySecs * 1000)
         if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
             cleanup()
-        # except KeyboardInterrupt:
-        #     cleanup()
-
-def runWebApp():
-    logging.info("Starting web app")
-    webApp.run(use_reloader=False, threaded=True)
-
-async def main():
-    mainTask = asyncio.create_task(slideshow())
-    await asyncio.gather(asyncio.to_thread(runWebApp), mainTask)
 
 if logToFile:
-    logging.basicConfig(filename=f"{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename=f"view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
 else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 
 if __name__ == '__main__':  # If the script that was run is this script (we have not been imported)
-    host_name = "0.0.0.0"
-    port = 5001
-    threading.Thread(target=lambda: webApp.run(host=host_name, port=port, use_reloader=False)).start()
-    asyncio.run(slideshow())
+    slideshow()
+    _exit(0)
