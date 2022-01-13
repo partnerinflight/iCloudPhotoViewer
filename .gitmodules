@@ -1,0 +1,3 @@
+[submodule "pyicloud"]
+	path = pyicloud
+	url = https://github.com/partnerinflight/pyicloud.git
