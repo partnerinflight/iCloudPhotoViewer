@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from flask import Flask, request
 from pyicloud import PyiCloudService
 from pyicloud.exceptions import PyiCloudAPIResponseException
@@ -150,7 +150,7 @@ with open(configPath, 'r') as config:
     logToFile = obj["logToFile"]
 
 if logToFile:
-    logging.basicConfig(filename=f"view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename=f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
 else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 

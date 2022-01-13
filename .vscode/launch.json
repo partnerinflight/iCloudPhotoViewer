@@ -20,7 +20,7 @@
             "remoteRoot": "/home/pi/iCloudPhotoViewer",
             "port": 5678,
             "secret": "my_secret",
-            "host": "192.168.1.6",
+            "host": "polmiliphoto.local",
             "preLaunchTask": "remote-deploy-debug"
         }
     ]
