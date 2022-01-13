@@ -11,5 +11,9 @@
     "relayPin": 13,
     "screenTimeout": 1200,
     "logToFile": true,
-    "skipDisplay": false
+    "skipDisplay": false,
+    "serverSocket": 5000,
+    "showStatus": true,
+    "ipcSocket": 5001,
+    "autoLaunchCollector": true
 }

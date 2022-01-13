@@ -8,9 +8,10 @@ from threading import Thread
 from random import randint, choice
 from math import trunc
 from PIL import Image
-from os import environ, path
+from os import environ, path, remove
 from FileCache import FileCache
 from pyicloud.services.photos import PhotoAlbum
+from StatusReporter import StatusReporter
 
 canConvertHeif = True
 try:
@@ -31,20 +32,24 @@ class iCloudFileFetcher:
     finished: bool = False
     status = "Waiting for iCloud Credentials"
     cache: FileCache = None
+    ipcSocket = 5001
+    statusReporter: StatusReporter = None
 
-    def __init__(self, albumName: str, resize: bool, maxSize, workingDir):
+    def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket):
         logging.getLogger().setLevel(logging.INFO)
         self.finished = False
         self.albumName = albumName
         self.resize = resize
         self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
+        self.statusReporter = StatusReporter(ipcSocket)
+        
         environ["DISPLAY"]=":0,0"
         pygame.display.init()
         screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
         self.screenSize = screen.get_size()
         pygame.display.quit()
-
+        
     def getStatus(self):
         return self.status
 
@@ -85,6 +90,8 @@ class iCloudFileFetcher:
         self.setPhotosList()
         finishedIndexes = []
         albumSize = len(self.photosAlbum)
+        numFailedPhotos = 0
+
         while not self.finished:
             if (len(finishedIndexes) == albumSize):
                 self.finished = True
@@ -102,12 +109,17 @@ class iCloudFileFetcher:
             # try fetching the photo
             try:
                 for photo in self.photosAlbum.photo(photoIndex):
-                    self.processPhoto(photo)
-                    photoIndex = photoIndex + 1
+                    if not self.cache.isPhotoInCache(photo):
+                        self.processPhoto(photo)
             except:
                 logging.error("Could not fetch photo index " + str(photoIndex))
+                numFailedPhotos = numFailedPhotos + 1
             finally:
                 finishedIndexes.append(photoIndex)
+                photoIndex = photoIndex + 1
+                self.statusReporter.report("working", albumSize, self.cache.numFiles, numFailedPhotos)
+        
+        self.statusReporter.report("Finished", albumSize, self.cache.numFiles, numFailedPhotos)
 
     def processPhoto(self, photo):
         logging.info(f"Picked photo {photo.filename} for processing")
@@ -137,8 +149,12 @@ class iCloudFileFetcher:
             # and now just save it
             logging.info(f"Resize of {fileName} successful.")
         fullPath = self.workingDir + "/" + fileName
+        originalPath = self.workingDir + "/" + photo.filename
         logging.info(f"Saving {fullPath}.")
         image.save(fullPath, "JPEG")
+        if (fullPath != originalPath):
+            remove(originalPath)
+
         self.cache.addPhotoToCache(fileName, fullPath)
 
     def usePhoto(self, photo, extension) -> bool:

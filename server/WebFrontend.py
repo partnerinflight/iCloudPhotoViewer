@@ -12,7 +12,8 @@ configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
 with open(configPath, 'r') as config:
     obj = json.load(config)
     logToFile = obj["logToFile"]
-
+    serverSocket = obj["serverSocket"]
+    ipcSocket = obj["ipcSocket"]
 class Status(enum.Enum):
     NotLoggedIn = 1
     NeedToSendMFACode = 2
@@ -154,11 +155,11 @@ else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 
 # setup major parts of the system
-fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir)
+fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir, ipcSocket)
 frontEnd = WebFrontEnd(fetcher)
 
 logging.info("Starting web app")
 webApp.run(use_reloader=False, threaded=True)
 host_name = "0.0.0.0"
-port = 5001
+port = serverSocket
 webApp.run(host=host_name, port=port)

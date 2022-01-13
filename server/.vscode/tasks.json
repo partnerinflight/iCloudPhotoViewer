@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "remote-deploy-run",
+            "command": "${workspaceRoot}/remote-deploy-run.bat",
+            "type": "shell",
+            "problemMatcher": []
+        },
+        {
+            "label": "remote-deploy-debug",
+            "command": "${workspaceRoot}/remote-deploy-debug.bat",
+            "type": "shell",
+            "problemMatcher": []
+        },
+        {
+            "label": "remote-stop",
+            "command": "${workspaceRoot}/remote-stop.bat",
+            "type": "shell",
+            "problemMatcher": []
+        }
+
+    ]
+}

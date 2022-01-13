@@ -38,6 +38,10 @@ class FileCache:
     def isPhotoInCache(self, file):
         return file in self.photos.keys()
 
+    @property
+    def numFiles(self):
+        return len(self.photos.keys())
+        
     def addPhotoToCache(self, file, fullPath):
         self.photos[file] = os.path.getmtime(fullPath)
         self.usedSpace += path.getsize(fullPath)
