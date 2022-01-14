@@ -161,4 +161,5 @@ frontEnd = WebFrontEnd(fetcher)
 logging.info("Starting web app")
 host_name = "0.0.0.0"
 port = serverSocket
+print(f"Starting web app on {host_name}:{port}")
 webApp.run(host=host_name, port=port, use_reloader=False, threaded=True)
