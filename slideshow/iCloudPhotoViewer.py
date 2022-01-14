@@ -64,7 +64,7 @@ def nextPhoto(workingDir) -> Image:
         photos = os.listdir(workingDir)
         if len(photos) == 0:
             logging.info('No photos found in library')
-            return None
+            return None, 0, 0, ""
         logging.info(f'Found {len(photos)} photos in library')
 
         photo = choice(photos)
@@ -133,7 +133,7 @@ def slideshow():
         img, total, number, name = nextPhoto(workingDir)
         if img == None:
             continue
-        
+
         if adornPhotos:
             logging.info(f"Drawing {name} on the image")
             drawOnImage(img, f"{name}: {number}/{total}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
