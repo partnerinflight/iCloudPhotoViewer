@@ -159,7 +159,6 @@ fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir, ipcSoc
 frontEnd = WebFrontEnd(fetcher)
 
 logging.info("Starting web app")
-webApp.run(use_reloader=False, threaded=True)
 host_name = "0.0.0.0"
 port = serverSocket
-webApp.run(host=host_name, port=port)
+webApp.run(host=host_name, port=port, use_reloader=False, threaded=True)
