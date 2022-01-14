@@ -150,7 +150,8 @@ with open(configPath, 'r') as config:
     logToFile = obj["logToFile"]
 
 if logToFile:
-    logging.basicConfig(filename=f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+    filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")
+    logging.basicConfig(filename=filePath, level=logging.INFO, format='%(asctime)s %(message)s')
 else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 
