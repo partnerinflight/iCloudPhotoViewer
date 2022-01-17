@@ -72,7 +72,7 @@ def nextPhoto(workingDir) -> Image:
         img = Image.open(path.join(workingDir, photo))
         return img, len(photos), photos.index(photo), photo
     except:
-        return None, len(photos), photos.index(photo), photo
+        return None, 0, 0, ""
 
 def slideshow():
     global timeoutEvent  
