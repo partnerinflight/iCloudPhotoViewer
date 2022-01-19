@@ -47,7 +47,10 @@ class WebFrontEnd:
             logging.info("Authenticating...")
             self.api = PyiCloudService(userName, password)
 
-            if self.api.requires_2sa:
+            if self.api.requires_2fa:
+                logging.info("Two factor authentication required")
+                self.status = Status.WaitingForMFACode
+            elif self.api.requires_2sa:
                 self.status = Status.NeedToSendMFACode
                 logging.info("Two-step authentication required.")
                 self.devices = self.api.trusted_devices
@@ -75,8 +78,23 @@ class WebFrontEnd:
 
     def validateCode(self, code):
         logging.info(f"Received code ${code}")
-        if self.api.validate_verification_code(self.chosenDevice, code):
-            self.setLoggedIn()
+        if self.api.requires_2fa:
+            result = self.api.validate_2fa_code(code)
+            if not result:
+                logging.error("Failed to validate code")
+                self.status = Status.NotLoggedIn
+                self.api = None
+                return
+            if not self.api.is_trusted_session:
+                logging.info("Session is not trusted")
+                result = self.api.trust_session()
+                if not result:
+                    logging.error("Failed to trust session")
+                    self.status = Status.NotLoggedIn
+                    self.api = None
+        elif self.api.requires_2sa:
+            if self.api.validate_verification_code(self.chosenDevice, code):
+                self.setLoggedIn()
         else:
             self.status = Status.NotLoggedIn
             self.api = None
