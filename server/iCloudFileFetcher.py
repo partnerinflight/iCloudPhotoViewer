@@ -11,7 +11,7 @@ from PIL import Image
 from os import environ, path, remove
 from FileCache import FileCache
 from pyicloud.services.photos import PhotoAlbum
-from StatusReporter import StatusReporter
+from SlideshowInterface import SlideshowInterface
 
 canConvertHeif = True
 try:
@@ -33,7 +33,7 @@ class iCloudFileFetcher:
     status = "Waiting for iCloud Credentials"
     cache: FileCache = None
     ipcSocket = 5001
-    statusReporter: StatusReporter = None
+    slideshowInterface: SlideshowInterface = None
 
     def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket):
         logging.getLogger().setLevel(logging.INFO)
@@ -42,7 +42,7 @@ class iCloudFileFetcher:
         self.resize = resize
         self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
-        self.statusReporter = StatusReporter(ipcSocket)
+        self.slideshowInterface = SlideshowInterface(ipcSocket)
         
         environ["DISPLAY"]=":0,0"
         pygame.display.init()
@@ -117,9 +117,9 @@ class iCloudFileFetcher:
             finally:
                 finishedIndexes.append(photoIndex)
                 photoIndex = photoIndex + 1
-                self.statusReporter.report("working", albumSize, self.cache.numFiles, numFailedPhotos)
+                self.slideshowInterface.report("working", albumSize, self.cache.numFiles, numFailedPhotos)
         
-        self.statusReporter.report("Finished", albumSize, self.cache.numFiles, numFailedPhotos)
+        self.slideshowInterface.report("Finished", albumSize, self.cache.numFiles, numFailedPhotos)
 
     def processPhoto(self, photo):
         logging.info(f"Picked photo {photo.filename} for processing")

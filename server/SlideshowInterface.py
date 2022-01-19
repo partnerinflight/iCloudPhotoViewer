@@ -1,7 +1,7 @@
 import zmq
 import logging
 
-class StatusReporter:
+class SlideshowInterface:
     def __init__(self, port):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUB)
