@@ -12,15 +12,27 @@ function FileFetcherStatus(props) {
             setStatus(json.status);
             setAlbum(json.album);
             setNumPhotos(json.numPhotos);
-            setNumPhotosFetched(json.numPhotosFetched);
+            setNumPhotosFetched(json.numPhotosProcessed);
         }, 5000);
     });
 
+    async function sendScreenCommand(command) {
+        await fetch('/api/screen_command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 'command': 'screen', 'params': command })
+        });
+    }
+    
     return (
         <div>
             <div>{status}</div>
             <div>{`Album is: ${album}`}</div>
             <div>{`Fetched ${numPhotosFetched} photos, ${numPhotos} left`}</div>
+            <button onClick={() => sendScreenCommand("on")}>Screen On</button>
+            <button onClick={() => sendScreenCommand("off")}>Screen Off</button>
         </div>
     );
 }

@@ -71,6 +71,9 @@ class iCloudFileFetcher:
             logging.info("Got a valid API. Starting fetcher")
             self.workerThread.start()
         
+    def sendSlideshowCommand(self, command, params):
+        self.slideshowInterface.sendCommand(command, params)
+
     def setPhotosList(self):
         if not self.albumName:
             self.photosAlbum = self.api.photos.all

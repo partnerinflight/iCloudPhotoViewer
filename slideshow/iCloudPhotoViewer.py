@@ -10,7 +10,9 @@ from datetime import datetime
 import os
 from time import sleep
 from random import choice
-from StatusIngester import StatusIngester
+from CollectorInterface import CollectorInterface
+import sys
+import threading
 
 screenSaver = None
 timeoutEvent : asyncio.Event = None
@@ -47,12 +49,12 @@ def drawOnImage(image: Image, text: str, coordinates, font: ImageFont.FreeTypeFo
     draw.text([coordinates[0], coordinates[1]], text, fill=(255,222,000), font=font)
     return draw
 
-def drawStatus(image: Image, screenSize, status: StatusIngester, font: ImageFont.FreeTypeFont, emboss: bool):
-    draw = drawOnImage(image, f'{status.numProcessedPhotos}/{status.numTotalPhotos}', (40, screenSize[1] - 20), font, emboss)
+def drawStatus(image: Image, screenSize, collector: CollectorInterface, font: ImageFont.FreeTypeFont, emboss: bool):
+    draw = drawOnImage(image, f'{collector.numProcessedPhotos}/{collector.numTotalPhotos}', (40, screenSize[1] - 20), font, emboss)
     size = draw.textsize("123", font=font)
     offset = max(size[1], 5)
  
-    if status.status:
+    if collector.status:
         fill = "green"
     else:
         fill = "red"
@@ -92,8 +94,7 @@ def slideshow():
         showStatus = obj["showStatus"]
         autoLaunchCollector = obj["autoLaunchCollector"]
 
-    if timeout != None and timeout > 0:
-        screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
+    screenSaver = ScreenSaver(sensorPin, relayPin, timeout, timeoutEvent)
                  
     # Open a window on the screen
     if skipDisplay:
@@ -119,9 +120,8 @@ def slideshow():
 
     logging.info("SLIDESHOW: Starting slideshow")
 
-    # start the status ingester
-    if showStatus:
-        statusIngester = StatusIngester(statusPort, autoLaunchCollector)
+    # start the interface with the collector process
+    collector = CollectorInterface(statusPort, screenSaver, autoLaunchCollector)
 
     while(True):
         for event in pygame.event.get():
@@ -137,7 +137,7 @@ def slideshow():
         if adornPhotos:
             logging.info(f"Drawing {name} on the image")
             drawOnImage(img, f"{name}: {number}/{total}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
-            drawStatus(img, tsize, statusIngester, myfontSmall, True)
+            drawStatus(img, tsize, collector, myfontSmall, True)
 
         # convert to pygame image
         image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
@@ -150,15 +150,47 @@ def slideshow():
         pygame.display.flip() # display update
         event = pygame.event.wait(100)
         if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
-            statusIngester.cleanup()
+            collector.cleanup()
             cleanup()
         pygame.event.clear()
         sleep(delaySecs)
 
 if logToFile:
-    logging.basicConfig(filename=f"view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log", level=logging.INFO, format='%(asctime)s %(message)s')
+    filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")
+    logging.basicConfig(filename=filePath, level=logging.INFO, format='%(asctime)s %(message)s')
 else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
+
+
+def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+    """Handler for unhandled exceptions that will write to the logs"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        # call the default excepthook saved at __excepthook__
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    logging.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_unhandled_exception
+
+def patch_threading_excepthook():
+    """Installs our exception handler into the threading modules Thread object
+    Inspired by https://bugs.python.org/issue1230540
+    """
+    old_init = threading.Thread.__init__
+    def new_init(self, *args, **kwargs):
+        old_init(self, *args, **kwargs)
+        old_run = self.run
+        def run_with_our_excepthook(*args, **kwargs):
+            try:
+                old_run(*args, **kwargs)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                sys.excepthook(*sys.exc_info())
+        self.run = run_with_our_excepthook
+    threading.Thread.__init__ = new_init
+
+patch_threading_excepthook()
 
 if __name__ == '__main__':  # If the script that was run is this script (we have not been imported)
     slideshow()

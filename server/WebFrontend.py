@@ -160,6 +160,16 @@ def downloader_status():
         'numPhotosProcessed': frontEnd.fetcher.getNumPhotosProcessed(),
     })
 
+@webApp.route('/api/screen_control', methods=['POST'])
+def screen_control():
+    global frontEnd
+    json = request.get_json()
+    if json['action'] == 'on':
+        frontEnd.fetcher.sendSlideshowCommand('screen', 'on')
+    elif json['action'] == 'off':
+        frontEnd.fetcher.sendSlideshowCommand('screen', 'off')
+    return downloader_status()
+
  # fetch config data
 with open(configPath, 'r') as config:
     obj = json.load(config)

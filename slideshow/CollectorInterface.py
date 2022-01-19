@@ -3,8 +3,8 @@ import threading
 import logging
 import subprocess
 from os import path
-
-class StatusIngester:
+from ScreenSaver import ScreenSaver
+class CollectorInterface:
     state: bool = False
     totalPhotos: int = 0
     processedPhotos: int = 0
@@ -13,8 +13,10 @@ class StatusIngester:
     finished: bool = False
     collectorThread: threading.Thread = None
     port: int = 0
-    def __init__(self, port, autoLaunchCollector=True):
+    screenSaver: ScreenSaver
+    def __init__(self, port, screenSaver,  autoLaunchCollector=True):
         self.port = port
+        self.screenSaver = screenSaver
         # start the status ingester
         self.ingesterThread = threading.Thread(target=self.runIngester)
         self.ingesterThread.start()
@@ -45,11 +47,19 @@ class StatusIngester:
         self.socket.connect("tcp://localhost:%s" % self.port)
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
         while not self.finished:
-            status = self.socket.recv_json()
-            self.state = status["status"].lower() != "finished"
-            self.totalPhotos = status["numTotalPhotos"]
-            self.processedPhotos = status["numProcessedPhotos"]
-            self.failedPhotos = status["numFailedPhotos"]
+            packet = self.socket.recv_json()
+            if "status" in packet:
+                self.state = packet["status"].lower() != "finished"
+                self.totalPhotos = packet["numTotalPhotos"]
+                self.processedPhotos = packet["numProcessedPhotos"]
+                self.failedPhotos = packet["numFailedPhotos"]
+            elif "command" in packet:
+                if packet["command"] == "screen":
+                    logging.info("Sending screen command")
+                    if packet['params'] == "on":
+                        self.screenSaver.turnOnScreen()
+                    else:
+                        self.screenSaver.turnOffScreen()
 
     def cleanup(self):
         self.finished = True

@@ -15,3 +15,11 @@ class SlideshowInterface:
             "numFailedPhotos": numFailedPhotos
         })
         logging.info("StatusReporter: %s" % res)
+
+    def sendCommand(self, command, params):
+        logging.info("Sending command %s with params %s to slideshow" % (command, params))
+        res = self.socket.send_json({
+            "command": command,
+            "params": params
+        })
+        logging.info("CommandSender: %s" % res)

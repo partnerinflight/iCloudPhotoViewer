@@ -63,6 +63,18 @@ class ScreenSaver:
                 toggleMonitor(self.relayPin)
                 self.screenOn = True
 
+    def turnOnScreen(self):
+        if not self.screenOn:
+            logging.info("Turning on screen")
+            toggleMonitor(self.relayPin)
+            self.screenOn = True
+    
+    def turnOffScreen(self):
+        if self.screenOn:
+            logging.info("Turning off screen")
+            toggleMonitor(self.relayPin)
+            self.screenOn = False
+
     def cleanup(self):
         logging.info("Cleaning up ScreenSaver")
         self.timer.cancel()
