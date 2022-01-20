@@ -94,7 +94,7 @@ class WebFrontEnd:
                     logging.error("Failed to trust session")
                     self.status = Status.NotLoggedIn
                     self.api = None
-                self.setLoggedIn()
+            self.setLoggedIn()
         elif self.api.requires_2sa:
             if self.api.validate_verification_code(self.chosenDevice, code):
                 self.setLoggedIn()
