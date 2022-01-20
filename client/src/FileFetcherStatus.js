@@ -24,7 +24,7 @@ function FileFetcherStatus(props) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 'command': 'screen', 'params': command })
+            body: JSON.stringify({ 'action': command })
         });
         setScreenCommandsEnabled(true);
     }
