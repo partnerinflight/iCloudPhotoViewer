@@ -35,7 +35,7 @@ function FileFetcherStatus(props) {
             <div>{`Album is: ${album}`}</div>
             <div>{`Fetched ${numPhotosFetched} photos, ${numPhotos} left`}</div>
             <button disabled={!screenCommandsEnabled} onClick={() => sendScreenCommand("on")}>Screen On</button>
-            <button onClick={() => sendScreenCommand("off")}>Screen Off</button>
+            <button disabled={!screenCommandsEnabled} onClick={() => sendScreenCommand("off")}>Screen Off</button>
         </div>
     );
 }

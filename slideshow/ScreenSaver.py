@@ -14,7 +14,7 @@ def toggleMonitor(channel):
         return
     logging.info("Toggling monitor state")
     GPIO.output(channel, GPIO.HIGH)
-    time.sleep(.5)
+    time.sleep(.4)
     GPIO.output(channel, GPIO.LOW)
 
 class ScreenSaver:
@@ -27,6 +27,7 @@ class ScreenSaver:
     relayPin = 0
 
     def __init__(self, sensorPin, relayPin, timeoutSeconds, event) -> None:
+        logging.getLogger().setLevel(logging.INFO)
         logging.info(f"Initiazing ScreenSaver with (S={sensorPin}, R={relayPin}, Timeout={timeoutSeconds})")
         if runningOnPi:
             logging.info(f"Configuring GPIO: {GPIO.RPI_INFO}")

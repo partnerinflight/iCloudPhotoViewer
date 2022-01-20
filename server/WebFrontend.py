@@ -155,15 +155,17 @@ def mfa():
 def downloader_status():
     global frontEnd
     return json.dumps({
-        'status': frontEnd.fetcher.getStatus(),
-        'album': frontEnd.fetcher.getAlbum(),
-        'numPhotos': frontEnd.fetcher.getNumPhotos(),
-        'numPhotosProcessed': frontEnd.fetcher.getNumPhotosProcessed(),
+        'status': frontEnd.fetcher.status,
+        'album': frontEnd.fetcher.albumName,
+        'numPhotos': frontEnd.fetcher.numPhotosInAlbum,
+        'numPhotosProcessed': frontEnd.fetcher.numPhotosProcessed,
+        'cacheUsePercentage': frontEnd.fetcher.cacheUsePercentage,
     })
 
 @webApp.route('/api/screen_control', methods=['POST'])
 def screen_control():
     global frontEnd
+    logging.info("Screen control command: " + request.data)
     json = request.get_json()
     if json['action'] == 'on':
         frontEnd.fetcher.sendSlideshowCommand('screen', 'on')

@@ -67,10 +67,10 @@ def nextPhoto(workingDir) -> Image:
         if len(photos) == 0:
             logging.info('No photos found in library')
             return None, 0, 0, ""
-        logging.info(f'Found {len(photos)} photos in library')
+     #   logging.info(f'Found {len(photos)} photos in library')
 
         photo = choice(photos)
-        logging.info(f'Selected {photo}')
+      #  logging.info(f'Selected {photo}')
         img = Image.open(path.join(workingDir, photo))
         return img, len(photos), photos.index(photo), photo
     except:
@@ -132,6 +132,7 @@ def slideshow():
                 continue
         img, total, number, name = nextPhoto(workingDir)
         if img == None:
+            sleep(delaySecs)
             continue
 
         if adornPhotos:

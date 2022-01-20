@@ -30,7 +30,7 @@ class iCloudFileFetcher:
     workerThread: Thread
     albumName: str
     finished: bool = False
-    status = "Waiting for iCloud Credentials"
+    _status = "Waiting for iCloud Credentials"
     cache: FileCache = None
     ipcSocket = 5001
     slideshowInterface: SlideshowInterface = None
@@ -52,21 +52,32 @@ class iCloudFileFetcher:
         self.screenSize = screen.get_size()
         pygame.display.quit()
         
-    def getStatus(self):
-        return self.status
+    @property
+    def status(self):
+        return self._status
 
-    def getNumPhotos(self):
+    @property
+    def numPhotosInAlbum(self):
         if self.photosAlbum != None:
             return len(self.photosAlbum)
         else:
             return 0
 
-    def getNumPhotosProcessed(self):
-        return len(self.photos)
+    @property
+    def numPhotosProcessed(self):
+        return len(self.cache.numFiles)
 
-    def getAlbum(self):
-        return self.albumName
+    @property
+    def album(self):
+        if self.albumName == "":
+            return "All Photos"
+        else:
+            return self.albumName
 
+    @property
+    def cacheUsePercent(self):
+        return self.cache.usePercent
+        
     def setApi(self, api: PyiCloudService):
         self.api = api
         if api:
@@ -91,7 +102,7 @@ class iCloudFileFetcher:
 
     def worker(self):
         logging.info("Started FileCache Worker Thread")
-        self.status = "Fetching Photos"
+        self._status = "Fetching Photos"
         self.setPhotosList()
         finishedIndexes = []
         albumSize = len(self.photosAlbum)
@@ -100,7 +111,7 @@ class iCloudFileFetcher:
         while not self.finished:
             if (len(finishedIndexes) == albumSize):
                 self.finished = True
-                self.status = "Finished"
+                self._status = "Finished"
                 break
 
             # main retrieval loop
@@ -134,13 +145,13 @@ class iCloudFileFetcher:
             logging.warning(f"Photo {photo.filename} is not usable")
             raise Exception("Photo is not usable")
     
-        self.status = f"Examining photo {photo.filename}"
+        self._status = f"Examining photo {photo.filename}"
         # convert/download photo from icloud
         if (split[1] == ".HEIC"):
-            self.status = f"Converting {photo.filename}"
+            self._status = f"Converting {photo.filename}"
             image = self._convert_heic(photo, split[0])
         else:
-            self.status = f"Downloading {photo.filename}"
+            self._status = f"Downloading {photo.filename}"
             image = self._download_jpeg(photo)
 
         if image == None:
@@ -167,7 +178,6 @@ class iCloudFileFetcher:
         canUseFormat = extension == ".JPEG" or extension == ".JPG" or (canConvertHeif and extension == ".HEIC")
         return photo \
             and canUseFormat \
-            and photo not in self.photos \
             and not self.cache.isPhotoInCache(photo) \
             and photo.dimensions[0] * photo.dimensions[1] < 15000000
 

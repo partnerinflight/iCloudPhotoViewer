@@ -42,6 +42,10 @@ class FileCache:
     def numFiles(self):
         return len(self.photos.keys())
         
+    @property
+    def cacheUsagePercent(self):
+        return int(self.usedSpace / self.maxAvailableSpace * 100)
+
     def addPhotoToCache(self, file, fullPath):
         self.photos[file] = os.path.getmtime(fullPath)
         self.usedSpace += path.getsize(fullPath)
