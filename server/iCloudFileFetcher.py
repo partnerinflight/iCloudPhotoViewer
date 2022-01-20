@@ -37,9 +37,11 @@ class iCloudFileFetcher:
 
     def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket):
         logging.getLogger().setLevel(logging.INFO)
+        logging.info("Initializing Collector with params: Album: " + str(albumName) + " Resize: " + str(resize) + " MaxSize: " + str(maxSize) + " WorkingDir: " + str(workingDir))
         self.finished = False
         self.albumName = albumName
         self.resize = resize
+        self.workingDir = workingDir
         self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
         self.slideshowInterface = SlideshowInterface(ipcSocket)
