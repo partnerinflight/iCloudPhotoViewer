@@ -1,7 +1,5 @@
 {
     "albumName": "Frame2",
-    "userName": "<iCloud username>",
-    "password": "<iCloud password>",
     "workingDir": "~/photos",
     "maxSpaceGb": 20,
     "adornPhotos": false,

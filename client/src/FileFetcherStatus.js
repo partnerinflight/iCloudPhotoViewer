@@ -5,6 +5,7 @@ function FileFetcherStatus(props) {
     const [ album, setAlbum ] = useState([]);
     const [ numPhotos, setNumPhotos ] = useState(0);
     const [ numPhotosFetched, setNumPhotosFetched ] = useState(0);
+    const [ screenCommandsEnabled, setScreenCommandsEnabled ] = useState(true);
     useEffect(() => {
         setTimeout(async () => {
             const response = await fetch('/api/downloader_status');
@@ -17,21 +18,23 @@ function FileFetcherStatus(props) {
     });
 
     async function sendScreenCommand(command) {
-        await fetch('/api/screen_command', {
+        setScreenCommandsEnabled(false);
+        await fetch('/api/screen_control', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 'command': 'screen', 'params': command })
         });
+        setScreenCommandsEnabled(true);
     }
-    
+
     return (
         <div>
             <div>{status}</div>
             <div>{`Album is: ${album}`}</div>
             <div>{`Fetched ${numPhotosFetched} photos, ${numPhotos} left`}</div>
-            <button onClick={() => sendScreenCommand("on")}>Screen On</button>
+            <button disabled={!screenCommandsEnabled} onClick={() => sendScreenCommand("on")}>Screen On</button>
             <button onClick={() => sendScreenCommand("off")}>Screen Off</button>
         </div>
     );
