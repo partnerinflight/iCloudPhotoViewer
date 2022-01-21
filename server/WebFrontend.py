@@ -159,7 +159,7 @@ def downloader_status():
         'album': frontEnd.fetcher.albumName,
         'numPhotos': frontEnd.fetcher.numPhotosInAlbum,
         'numPhotosProcessed': frontEnd.fetcher.numPhotosProcessed,
-        'cacheUsePercentage': frontEnd.fetcher.cacheUsePercent,
+        'cacheUsePercent': frontEnd.fetcher.cacheUsePercent,
     })
 
 @webApp.route('/api/screen_control', methods=['POST'])

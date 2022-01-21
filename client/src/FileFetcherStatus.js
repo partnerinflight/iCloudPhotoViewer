@@ -5,6 +5,7 @@ function FileFetcherStatus(props) {
     const [ album, setAlbum ] = useState([]);
     const [ numPhotos, setNumPhotos ] = useState(0);
     const [ numPhotosFetched, setNumPhotosFetched ] = useState(0);
+    const [ cacheUsePercent, setCacheUsePercent ] = useState(0);
     const [ screenCommandsEnabled, setScreenCommandsEnabled ] = useState(true);
     useEffect(() => {
         setTimeout(async () => {
@@ -14,6 +15,7 @@ function FileFetcherStatus(props) {
             setAlbum(json.album);
             setNumPhotos(json.numPhotos);
             setNumPhotosFetched(json.numPhotosProcessed);
+            setCacheUsePercent(json.cacheUsePercent);
         }, 5000);
     });
 
@@ -34,6 +36,7 @@ function FileFetcherStatus(props) {
             <div>{status}</div>
             <div>{`Album is: ${album}`}</div>
             <div>{`Fetched ${numPhotosFetched} photos, ${numPhotos} left`}</div>
+            <div>{`Cache use: ${cacheUsePercent}%`}</div>
             <button disabled={!screenCommandsEnabled} onClick={() => sendScreenCommand("on")}>Screen On</button>
             <button disabled={!screenCommandsEnabled} onClick={() => sendScreenCommand("off")}>Screen Off</button>
         </div>
