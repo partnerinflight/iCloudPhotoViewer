@@ -166,7 +166,7 @@ def downloader_status():
 def screen_control():
     global frontEnd
     json = request.get_json()
-    logging.info("Screen control command: " + json.toString())
+    logging.info("Screen control command: " + json['action'])
     if json['action'] == 'on':
         logging.info("Sending Screen On command")
         frontEnd.fetcher.sendSlideshowCommand('screen', 'on')
