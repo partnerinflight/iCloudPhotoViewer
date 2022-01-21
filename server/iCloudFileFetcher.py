@@ -65,7 +65,7 @@ class iCloudFileFetcher:
 
     @property
     def numPhotosProcessed(self):
-        return len(self.cache.numFiles)
+        return self.cache.numFiles
 
     @property
     def album(self):
@@ -77,7 +77,7 @@ class iCloudFileFetcher:
     @property
     def cacheUsePercent(self):
         return self.cache.usePercent
-        
+
     def setApi(self, api: PyiCloudService):
         self.api = api
         if api:
