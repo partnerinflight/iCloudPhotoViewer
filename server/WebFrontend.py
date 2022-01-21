@@ -165,11 +165,13 @@ def downloader_status():
 @webApp.route('/api/screen_control', methods=['POST'])
 def screen_control():
     global frontEnd
-    logging.info("Screen control command: " + request.data)
     json = request.get_json()
+    logging.info("Screen control command: " + json.toString())
     if json['action'] == 'on':
+        logging.info("Sending Screen On command")
         frontEnd.fetcher.sendSlideshowCommand('screen', 'on')
     elif json['action'] == 'off':
+        logging.info("Sending Screen Off command")
         frontEnd.fetcher.sendSlideshowCommand('screen', 'off')
     return downloader_status()
 
