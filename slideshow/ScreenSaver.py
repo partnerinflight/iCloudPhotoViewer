@@ -14,9 +14,9 @@ except ModuleNotFoundError:
 def toggleMonitor(channel):
     if not runningOnPi:
         return
-    logging.info("Toggling monitor state")
+    logging.info("Toggling monitor state on channel %s" % channel)
     GPIO.output(channel, GPIO.HIGH)
-    time.sleep(.4)
+    time.sleep(.8)
     GPIO.output(channel, GPIO.LOW)
 
 class ScreenSaver:
