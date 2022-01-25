@@ -44,8 +44,8 @@ class FileCache:
         
     @property
     def cacheUsagePercent(self):
-        result = int(self.usedSpace / self.maxAvailableSpace * 100)
-        logging.info(f'Cache usage is {result}%')
+        result = int((float(self.usedSpace) / float(self.maxAvailableSpace)) * 100.0)
+        logging.info(f'Used: {self.usedSpace}, Max: {self.maxAvailableSpace}, Cache usage is {result}%')
         return result
 
     def addPhotoToCache(self, file, fullPath):

@@ -3,6 +3,8 @@ import time
 import asyncio
 import threading
 import logging
+import click
+
 runningOnPi = True
 try:
     import RPi.GPIO as GPIO
@@ -84,4 +86,22 @@ class ScreenSaver:
         logging.info("Cleaning up ScreenSaver")
         self.timer.cancel()
         self.event.set()
+        GPIO.cleanup()
             
+if __name__ == "__main__":
+    saver = ScreenSaver(11, 13, 3600, asyncio.Event())
+    finished = False
+    while not finished:
+        try:
+            result = click.prompt("Enter command: ", type=click.Choice(['on', 'off', 'quit']))
+            if result == 'on':
+                saver.turnOnScreen()
+            elif result == 'off':
+                saver.turnOffScreen()
+            elif result == 'quit':
+                finished = True
+        except KeyboardInterrupt:
+            finished = True
+            logging.info("Exiting")
+        finally:
+            saver.cleanup()
