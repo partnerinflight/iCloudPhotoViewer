@@ -76,7 +76,7 @@ class iCloudFileFetcher:
 
     @property
     def cacheUsePercent(self):
-        return self.cache.cacheUsagePercent
+        return self.cache.cacheUsePercent
 
     def setApi(self, api: PyiCloudService):
         self.api = api

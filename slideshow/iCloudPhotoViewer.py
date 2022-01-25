@@ -124,37 +124,41 @@ def slideshow():
     collector = CollectorInterface(statusPort, screenSaver, autoLaunchCollector)
 
     while(True):
-        for event in pygame.event.get():
-            try:
-                if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
-                    return
-            except ValueError:
+        try:
+            for event in pygame.event.get():
+                try:
+                    if event.type == pygame.KEYDOWN and chr(event.key) == 'q':
+                        return
+                except ValueError:
+                    continue
+            img, total, number, name = nextPhoto(workingDir)
+            if img == None:
+                sleep(delaySecs)
                 continue
-        img, total, number, name = nextPhoto(workingDir)
-        if img == None:
+
+            if adornPhotos:
+                logging.info(f"Drawing {name} on the image")
+                drawOnImage(img, f"{name}: {number}/{total}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
+                drawStatus(img, tsize, collector, myfontSmall, True)
+
+            # convert to pygame image
+            image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
+            image = image.convert()
+
+            # center and draw
+            screen.fill([0,0,0])
+            ssize = img.size
+            screen.blit(image, [(tsize[0]-ssize[0])/2,(tsize[1]-ssize[1])/2])
+            pygame.display.flip() # display update
+            event = pygame.event.wait(100)
+            if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
+                collector.cleanup()
+                cleanup()
+            pygame.event.clear()
             sleep(delaySecs)
-            continue
+        except Exception as e:
+            logging.error(f"SLIDESHOW: Error: {e}. Continuing.")
 
-        if adornPhotos:
-            logging.info(f"Drawing {name} on the image")
-            drawOnImage(img, f"{name}: {number}/{total}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
-            drawStatus(img, tsize, collector, myfontSmall, True)
-
-        # convert to pygame image
-        image = pygame.image.fromstring(img.tobytes(), img.size, img.mode)
-        image = image.convert()
-
-        # center and draw
-        screen.fill([0,0,0])
-        ssize = img.size
-        screen.blit(image, [(tsize[0]-ssize[0])/2,(tsize[1]-ssize[1])/2])
-        pygame.display.flip() # display update
-        event = pygame.event.wait(100)
-        if event != pygame.NOEVENT and event.type == pygame.KEYDOWN:
-            collector.cleanup()
-            cleanup()
-        pygame.event.clear()
-        sleep(delaySecs)
 
 if logToFile:
     filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/view_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")

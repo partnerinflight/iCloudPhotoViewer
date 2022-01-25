@@ -43,8 +43,8 @@ class FileCache:
         return len(self.photos.keys())
         
     @property
-    def cacheUsagePercent(self):
-        result = int((float(self.usedSpace) / float(self.maxAvailableSpace)) * 100.0)
+    def cacheUsePercent(self):
+        result = round((float(self.usedSpace) / float(self.maxAvailableSpace)) * 100.0, 2)
         logging.info(f'Used: {self.usedSpace}, Max: {self.maxAvailableSpace}, Cache usage is {result}%')
         return result
 
