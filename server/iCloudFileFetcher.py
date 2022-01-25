@@ -12,6 +12,7 @@ from os import environ, path, remove
 from FileCache import FileCache
 from pyicloud.services.photos import PhotoAlbum
 from SlideshowInterface import SlideshowInterface
+import time
 
 canConvertHeif = True
 try:
@@ -122,6 +123,16 @@ class iCloudFileFetcher:
             if photoIndex in finishedIndexes:
                 continue
 
+            # delay based on # of photos in the library
+            # this is to prevent the app from getting throttled by iCloud
+            # when we're downloading a lot of photos
+            delay = trunc(self.cache.numFiles / 100)
+            if delay < 1:
+                delay = 1
+            delay = randint(delay, delay * 2)
+            logging.info(f"Delaying {delay} seconds")
+            time.sleep(delay)
+
             # try fetching the photo
             try:
                 for photo in self.photosAlbum.photo(photoIndex):
@@ -160,16 +171,17 @@ class iCloudFileFetcher:
         
         fileName = split[0] + ".JPEG"
         logging.info(f"Download successful.")
+        numFaces = 0
         if self.resize:
-            image = self._scan_and_resize(image, fileName)
+            image, numFaces = self._scan_and_resize(image, fileName)
             # and now just save it
             logging.info(f"Resize of {fileName} successful.")
-        fullPath = self.workingDir + "/" + fileName
+        fullPath = self.workingDir + "/" + f"{photo.created}-{numFaces}.JPEG"
+        logging.info(f"Saving {fileName} to {fullPath}")
         originalPath = self.workingDir + "/" + photo.filename
         logging.info(f"Saving {fullPath}.")
         image.save(fullPath, "JPEG")
-        if (fullPath != originalPath):
-            remove(originalPath)
+        remove(originalPath)
 
         self.cache.addPhotoToCache(fileName, fullPath)
 
@@ -204,7 +216,7 @@ class iCloudFileFetcher:
             # just thumbnail the image to screen size, don't attempt to intelligently
             # resize it
             image.thumbnail(self.screenSize)
-            return image
+            return image, 0
 
         # now we simply need to see how to best crop the resulting image
         # we're already in screen coordinate frame
@@ -250,7 +262,7 @@ class iCloudFileFetcher:
             logging.info(f"Cropping {name} to {startX}, {startY}, {endX}, {endY}")
             image = image.crop((0, startY, image.size[0], endY))
 
-        return image
+        return image, numFaces
 
     def _get_face_bounding_rect(self, image: Image, name: str):
         im = image.convert('RGB')
