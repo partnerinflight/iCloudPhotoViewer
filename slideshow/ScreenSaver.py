@@ -91,8 +91,8 @@ class ScreenSaver:
 if __name__ == "__main__":
     saver = ScreenSaver(11, 13, 3600, asyncio.Event())
     finished = False
-    while not finished:
-        try:
+    try:
+        while not finished:
             result = click.prompt("Enter command: ", type=click.Choice(['on', 'off', 'quit']))
             if result == 'on':
                 saver.turnOnScreen()
@@ -100,8 +100,8 @@ if __name__ == "__main__":
                 saver.turnOffScreen()
             elif result == 'quit':
                 finished = True
-        except KeyboardInterrupt:
-            finished = True
-            logging.info("Exiting")
-        finally:
-            saver.cleanup()
+    except KeyboardInterrupt:
+        finished = True
+        logging.info("Exiting")
+    finally:
+        saver.cleanup()
