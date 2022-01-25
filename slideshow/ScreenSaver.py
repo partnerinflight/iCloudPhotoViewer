@@ -89,6 +89,7 @@ class ScreenSaver:
         GPIO.cleanup()
             
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
     saver = ScreenSaver(11, 13, 3600, asyncio.Event())
     finished = False
     try:
