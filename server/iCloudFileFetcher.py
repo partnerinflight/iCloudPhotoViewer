@@ -13,6 +13,7 @@ from FileCache import FileCache
 from pyicloud.services.photos import PhotoAlbum
 from SlideshowInterface import SlideshowInterface
 import time
+import piexif
 
 canConvertHeif = True
 try:
@@ -20,6 +21,13 @@ try:
 except ModuleNotFoundError:
     logging.error("HEIC Conversion is disabled")
     canConvertHeif = False
+
+zeroth_ifd = {
+    piexif.ImageIFD.Artist: u"PhotoFrame",
+    piexif.ImageIFD.XResolution: (96, 1),
+    piexif.ImageIFD.YResolution: (96, 1),
+    piexif.ImageIFD.Software: u"piexif"
+    }
 
 class iCloudFileFetcher:    
     api: PyiCloudService = None
@@ -138,8 +146,8 @@ class iCloudFileFetcher:
                 for photo in self.photosAlbum.photo(photoIndex):
                     if not self.cache.isPhotoInCache(photo):
                         self.processPhoto(photo)
-            except:
-                logging.error("Could not fetch photo index " + str(photoIndex))
+            except Exception as e:
+                logging.error("Could not fetch photo index " + str(photoIndex) + ": " + str(e))
                 numFailedPhotos = numFailedPhotos + 1
             finally:
                 finishedIndexes.append(photoIndex)
@@ -169,6 +177,8 @@ class iCloudFileFetcher:
             logging.error(f"Failed to download image {photo.filename}")
             raise Exception("Failed to download image")
         
+        exif_dict = piexif.load(image.info["exif"])
+
         fileName = split[0] + ".JPEG"
         logging.info(f"Download successful.")
         numFaces = 0
@@ -176,12 +186,19 @@ class iCloudFileFetcher:
             image, numFaces = self._scan_and_resize(image, fileName)
             # and now just save it
             logging.info(f"Resize of {fileName} successful.")
-        fullPath = self.workingDir + "/" + f"{photo.created}-{numFaces}.JPEG"
+        fullPath = self.workingDir + "/" + fileName
         logging.info(f"Saving {fileName} to {fullPath}")
         originalPath = self.workingDir + "/" + photo.filename
         logging.info(f"Saving {fullPath}.")
-        image.save(fullPath, "JPEG")
-        remove(originalPath)
+        # create the exif tag for the image
+        exif_dict["Exif"][piexif.ExifIFD.SubjectArea] = numFaces
+        date = photo.created.strftime("%Y:%m:%d %H:%M:%S")
+        bDate = bytes(date, "utf-8")
+        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = bDate
+        exif_bytes = piexif.dump(exif_dict)
+        image.save(fullPath, "JPEG", exif=exif_bytes)
+        if fullPath != originalPath:
+            remove(originalPath)
 
         self.cache.addPhotoToCache(fileName, fullPath)
 

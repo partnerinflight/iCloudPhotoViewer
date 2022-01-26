@@ -13,6 +13,7 @@ from random import choice
 from CollectorInterface import CollectorInterface
 import sys
 import threading
+import piexif
 
 screenSaver = None
 timeoutEvent : asyncio.Event = None
@@ -135,10 +136,30 @@ def slideshow():
             if img == None:
                 sleep(delaySecs)
                 continue
-
+           
             if adornPhotos:
-                logging.info(f"Drawing {name} on the image")
-                drawOnImage(img, f"{name}: {number}/{total}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
+                try:
+                    exif_dict = piexif.load(img.info["exif"])
+                    if "Exif" in exif_dict:
+                        exif = exif_dict["Exif"]
+                        if piexif.ExifIFD.DateTimeOriginal in exif:
+                            dateTime = exif[piexif.ExifIFD.DateTimeOriginal]
+                            dateTime = datetime.strptime(str(dateTime, 'utf-8'), '%Y:%m:%d %H:%M:%S')
+                            dateTime = dateTime.strftime('%d %b %Y %H:%M')
+                        else:
+                            dateTime = ""
+                        if piexif.ExifIFD.SubjectArea in exif:
+                            numFaces = exif[piexif.ExifIFD.SubjectArea]
+                        else:
+                            numFaces = 0
+                    else:
+                        numFaces = 0
+                        dateTime = ""
+                except Exception as e:
+                    logging.error(f"Could not read EXIF data: {e}")
+                    numFaces = 0
+                    dateTime = ""
+                drawOnImage(img, f"{dateTime}, F: {numFaces}", [tsize[0] - 200, tsize[1] - 60], myfontLarge, True)
                 drawStatus(img, tsize, collector, myfontSmall, True)
 
             # convert to pygame image

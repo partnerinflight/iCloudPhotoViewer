@@ -44,8 +44,11 @@ class FileCache:
         
     @property
     def cacheUsePercent(self):
-        result = round((float(self.usedSpace) / float(self.maxAvailableSpace)) * 100.0, 2)
-        logging.info(f'Used: {self.usedSpace}, Max: {self.maxAvailableSpace}, Cache usage is {result}%')
+        if self.maxAvailableSpace > 0:
+            result = round((float(self.usedSpace) / float(self.maxAvailableSpace)) * 100.0, 2)
+            logging.info(f'Used: {self.usedSpace}, Max: {self.maxAvailableSpace}, Cache usage is {result}%')
+        else:
+            result = 100
         return result
 
     def addPhotoToCache(self, file, fullPath):
@@ -63,7 +66,7 @@ class FileCache:
 
             # now start removing until we are good or we have only one photo left
             retry = 0
-            while len(self.photos.keys) > 1 and self.maxAvailableSpace < self.usedSpace and retry < 10:
+            while len(self.photos.keys()) > 1 and self.maxAvailableSpace < self.usedSpace and retry < 10:
                 try:
                     file = sortedPhotos[0][0]
                     fullFilePath = self.workingDir + "/" + file
