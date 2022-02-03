@@ -51,7 +51,7 @@ class CollectorInterface:
                 self.state = False
                 logging.info('Photo Collector exited, restarting')
                 p = self.launchCollector()
-                sleep(30)
+            sleep(30)
 
     def runIngester(self):
         logging.info('Status ingester started')
