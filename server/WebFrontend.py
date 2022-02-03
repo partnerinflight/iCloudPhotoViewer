@@ -1,14 +1,21 @@
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask, request, send_file
+from werkzeug.routing import BaseConverter
 from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudAPIResponseException
 import logging
 import enum
 import json
 from iCloudFileFetcher import iCloudFileFetcher
-from os import path
+from os import path, mkdir
 import sys
 import threading
+from io import BytesIO
+from PIL import Image, ImageOps
+
+class RegexConverter(BaseConverter):
+    def __init__(self, url_map, *items):
+        super(RegexConverter, self).__init__(url_map)
+        self.regex = items[0]
 
 configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
 with open(configPath, 'r') as config:
@@ -16,12 +23,17 @@ with open(configPath, 'r') as config:
     logToFile = obj["logToFile"]
     serverSocket = obj["serverSocket"]
     ipcSocket = obj["ipcSocket"]
+    loggingSocket = obj["loggingSocket"]
+    workingDir = obj["workingDir"]
+    thumbnailDir = obj["thumbnailDir"]
+    if not path.exists(thumbnailDir):
+        mkdir(thumbnailDir)
+    
 class Status(enum.Enum):
     NotLoggedIn = 1
     NeedToSendMFACode = 2
     WaitingForMFACode = 3
     LoggedIn = 4
-
 
 class WebFrontEnd:
     status = Status.NotLoggedIn
@@ -114,6 +126,7 @@ class WebFrontEnd:
         self.status = status
 
 webApp = Flask(__name__, static_url_path='')
+webApp.url_map.converters['regex'] = RegexConverter
 
 @webApp.route('/')
 def home():
@@ -162,6 +175,41 @@ def downloader_status():
         'cacheUsePercent': frontEnd.fetcher.cacheUsePercent,
     })
 
+@webApp.route('/api/displayed_list', methods=['GET'])
+def displayed_list():
+    global frontEnd
+    return json.dumps(frontEnd.fetcher.displayedList)
+
+def get_thumbnail(name):
+        filepath = path.join(workingDir, name)
+        thumbPath = path.join(thumbnailDir, name)
+
+        if path.exists(thumbPath):
+            return thumbPath
+
+        with open(filepath, 'rb') as f:            
+            image = Image.open(BytesIO(f.read()))
+        try:
+            image.load()
+        except (IOError, OSError):
+            logging.warning('Thumbnail not load image: %s', filepath)
+            return filepath
+
+        image = ImageOps.fit(image, (200, 200), Image.ANTIALIAS)
+        image.save(thumbPath, 'JPEG')
+        return thumbPath
+
+@webApp.route('/media/<regex("([\w\d_/-]+)?.(?:JPEG|gif|png)"):filename>')
+def thumbnail(filename):
+    return send_file(get_thumbnail(filename))
+
+@webApp.route('/api/delete_photo', methods=['POST'])
+def delete_photo():
+    global frontEnd
+    json = request.get_json()
+    frontEnd.fetcher.deletePhoto(json['photo'])
+    return frontEnd.getStatus()
+
 @webApp.route('/api/screen_control', methods=['POST'])
 def screen_control():
     global frontEnd
@@ -183,6 +231,10 @@ with open(configPath, 'r') as config:
     maxSpace = obj["maxSpaceGb"]
     resizeImage = obj["resizeImage"]
     logToFile = obj["logToFile"]
+    if "keepOriginalFiles" in obj:
+        keepOriginalFiles = obj["keepOriginalFiles"]
+    else:
+        keepOriginalFiles = False
 
 if logToFile:
     filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")
@@ -191,7 +243,7 @@ else:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
 
 # setup major parts of the system
-fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir, ipcSocket)
+fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir, ipcSocket, loggingSocket, keepOriginalFiles)
 frontEnd = WebFrontEnd(fetcher)
 
 logging.info("Starting web app")

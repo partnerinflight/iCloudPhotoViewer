@@ -28,6 +28,14 @@ class FileCache:
         self.loadPhotos()
         self.cleanupCache()
 
+    def deletePhoto(self, photo):
+        fullFilePath = self.workingDir + "/" + photo
+        self.usedSpace -= path.getsize(fullFilePath)
+        logging.info(f'Deleting {fullFilePath}')
+        os.unlink(fullFilePath)
+        self.photos.pop(photo)
+        self.cleanupCache()
+
     def loadPhotos(self):
         for file in os.listdir(self.workingDir):
             fullFilePath = os.path.join(self.workingDir, file)

@@ -1,6 +1,7 @@
 {
     "albumName": "Frame2",
     "workingDir": "~/photos",
+    "thumbnailDir": "~/photos/thumbs",
     "maxSpaceGb": 20,
     "adornPhotos": false,
     "resizeImage": true,
@@ -13,5 +14,6 @@
     "serverSocket": 5000,
     "showStatus": true,
     "ipcSocket": 5001,
+    "loggingSocket": 5002,
     "autoLaunchCollector": true
 }

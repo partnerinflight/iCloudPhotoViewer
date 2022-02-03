@@ -1,3 +1,4 @@
+from time import sleep
 import zmq
 import threading
 import logging
@@ -12,10 +13,10 @@ class CollectorInterface:
     ingesterThread: threading.Thread = None
     finished: bool = False
     collectorThread: threading.Thread = None
-    port: int = 0
+    loggingPort: int = 0
     screenSaver: ScreenSaver
-    def __init__(self, port, screenSaver,  autoLaunchCollector=True):
-        self.port = port
+    def __init__(self, statusPort, loggingPort, screenSaver,  autoLaunchCollector=True):
+        self.statusPort = statusPort
         self.screenSaver = screenSaver
         # start the status ingester
         self.ingesterThread = threading.Thread(target=self.runIngester)
@@ -23,6 +24,17 @@ class CollectorInterface:
         if autoLaunchCollector:
             self.collectorThread = threading.Thread(target=self.collectorThread)
             self.collectorThread.start()
+        
+        # create the logging socket
+        self.loggingContext = zmq.Context()
+        self.loggingSocket = self.loggingContext.socket(zmq.PUB)
+        self.loggingSocket.bind("tcp://*:%s" % loggingPort)
+
+    def reportDisplayedPhoto(self, photoName):
+        self.loggingSocket.send_json({
+            "command": "displayedPhoto",
+            "params": photoName
+        })
 
     def launchCollector(self):
         logging.info('Starting Photo Collector')
@@ -39,15 +51,16 @@ class CollectorInterface:
                 self.state = False
                 logging.info('Photo Collector exited, restarting')
                 p = self.launchCollector()
+                sleep(30)
 
     def runIngester(self):
         logging.info('Status ingester started')
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.SUB)
-        self.socket.connect("tcp://localhost:%s" % self.port)
-        self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.statusContext = zmq.Context()
+        self.statusSocket = self.statusContext.socket(zmq.SUB)
+        self.statusSocket.connect("tcp://localhost:%s" % self.statusPort)
+        self.statusSocket.setsockopt_string(zmq.SUBSCRIBE, "")
         while not self.finished:
-            packet = self.socket.recv_json()
+            packet = self.statusSocket.recv_json()
             if "status" in packet:
                 self.state = packet["status"].lower() != "finished"
                 self.totalPhotos = packet["numTotalPhotos"]
@@ -63,7 +76,13 @@ class CollectorInterface:
 
     def cleanup(self):
         self.finished = True
-        self.socket.close()
+        self.statusSocket.close()
+        self.statusContext.term()
+        self.loggingSocket.close()
+        self.loggingContext.term()
+        self.ingesterThread.join()
+        if self.collectorThread is not None:
+            self.collectorThread.join()
 
     @property
     def status(self):

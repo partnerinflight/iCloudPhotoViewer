@@ -1,0 +1,36 @@
+/* Container needed to position the button. Adjust the width as needed */
+.container {
+    position: relative;
+    width: 200px;
+  }
+  
+  /* Make the image responsive */
+  .container img {
+    width: 200px;
+    height: 200px;
+  }
+  
+  /* Style the button and place it in the middle of the container/image */
+  .container .btn {
+    position: absolute;
+    top: 75%;
+    left: 80%;
+    background-color: #f0f0f0d7;
+    color: black;
+    font-size: 16px;
+    padding: 6px 10px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    width: auto;
+    height: auto;
+  }
+
+  .container .btn:hover {
+    background-color: black;
+    color: white;
+  }
+
+  .container .btn:active {
+    background-color: #3d3d3d;
+  }

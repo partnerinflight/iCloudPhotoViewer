@@ -34,7 +34,7 @@ function App() {
   return (
     <div className="App">
       {(status === 0 && <Spinner animation="border" variant="primary" />) ||
-       (status === 1 && <Login setStatus={(status) => setStatus(statusMap[status])}/>) ||
+       (status === 1 && <div><Login setStatus={(status) => setStatus(statusMap[status])}/> <FileFetcherStatus/></div>) ||
        (status === 2 && <MfaDeviceChoice setStatus={(status) => setStatus(statusMap[status])}/>) ||
        (status === 3 && <MfaCodeEntry setStatus={(status) => setStatus(statusMap[status])}/>) ||
        (status === 4 && <FileFetcherStatus/>)}

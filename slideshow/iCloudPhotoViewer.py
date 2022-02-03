@@ -8,6 +8,7 @@ import asyncio
 import logging
 from datetime import datetime
 import os
+import glob
 from time import sleep
 from random import choice
 from CollectorInterface import CollectorInterface
@@ -61,10 +62,13 @@ def drawStatus(image: Image, screenSize, collector: CollectorInterface, font: Im
         fill = "red"
     draw.ellipse((20, screenSize[1] - 20, 20 + offset, screenSize[1] - 20 + offset), fill=fill)
 
+def fileName(fullPath):
+    return path.basename(fullPath)
+
 def nextPhoto(workingDir) -> Image:
     # return a random image from the ones already on disk
     try:
-        photos = os.listdir(workingDir)
+        photos = list(map(fileName, glob.glob(workingDir + "/*.JPEG")))
         if len(photos) == 0:
             logging.info('No photos found in library')
             return None, 0, 0, ""
@@ -74,7 +78,8 @@ def nextPhoto(workingDir) -> Image:
       #  logging.info(f'Selected {photo}')
         img = Image.open(path.join(workingDir, photo))
         return img, len(photos), photos.index(photo), photo
-    except:
+    except Exception as e:
+        logging.error(f'Error selecting photo: {e}')
         return None, 0, 0, ""
 
 def slideshow():
@@ -92,6 +97,7 @@ def slideshow():
         timeout = obj["screenTimeout"]
         skipDisplay = obj["skipDisplay"]
         statusPort = obj["ipcSocket"]
+        loggingPort = obj["loggingSocket"]
         showStatus = obj["showStatus"]
         autoLaunchCollector = obj["autoLaunchCollector"]
 
@@ -122,7 +128,7 @@ def slideshow():
     logging.info("SLIDESHOW: Starting slideshow")
 
     # start the interface with the collector process
-    collector = CollectorInterface(statusPort, screenSaver, autoLaunchCollector)
+    collector = CollectorInterface(statusPort, loggingPort, screenSaver, autoLaunchCollector)
 
     while(True):
         try:
@@ -176,6 +182,7 @@ def slideshow():
                 collector.cleanup()
                 cleanup()
             pygame.event.clear()
+            collector.reportDisplayedPhoto(name)
             sleep(delaySecs)
         except Exception as e:
             logging.error(f"SLIDESHOW: Error: {e}. Continuing.")

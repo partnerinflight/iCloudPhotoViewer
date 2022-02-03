@@ -43,8 +43,10 @@ class iCloudFileFetcher:
     cache: FileCache = None
     ipcSocket = 5001
     slideshowInterface: SlideshowInterface = None
+    keepOriginalFiles: bool = False
+    rejectedPhotos = []
 
-    def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket):
+    def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket, statusPort, keepOriginalFiles=False):
         logging.getLogger().setLevel(logging.INFO)
         logging.info("Initializing Collector with params: Album: " + str(albumName) + " Resize: " + str(resize) + " MaxSize: " + str(maxSize) + " WorkingDir: " + str(workingDir))
         self.finished = False
@@ -53,8 +55,14 @@ class iCloudFileFetcher:
         self.workingDir = workingDir
         self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
-        self.slideshowInterface = SlideshowInterface(ipcSocket)
-        
+        self.slideshowInterface = SlideshowInterface(ipcSocket, statusPort)
+        self.keepOriginalFiles = keepOriginalFiles
+
+        #pull rejected photos from a text file
+        if path.exists("rejected.txt"):
+            with open("rejected.txt", "r") as f:
+                self.rejectedPhotos = f.read().splitlines()
+
         environ["DISPLAY"]=":0,0"
         pygame.display.init()
         screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
@@ -71,6 +79,10 @@ class iCloudFileFetcher:
             return len(self.photosAlbum)
         else:
             return 0
+
+    @property
+    def displayedList(self):
+        return self.slideshowInterface.displayedPhotos
 
     @property
     def numPhotosProcessed(self):
@@ -93,6 +105,13 @@ class iCloudFileFetcher:
             logging.info("Got a valid API. Starting fetcher")
             self.workerThread.start()
         
+    def deletePhoto(self, photo: str):
+        # Here we want to delete the photo and add it to the list
+        # of photos not to be fetched.
+        self.cache.deletePhoto(photo)
+        self.rejectedPhotos.append(photo)
+
+
     def sendSlideshowCommand(self, command, params):
         self.slideshowInterface.sendCommand(command, params)
 
@@ -188,7 +207,7 @@ class iCloudFileFetcher:
             logging.info(f"Resize of {fileName} successful.")
         fullPath = self.workingDir + "/" + fileName
         logging.info(f"Saving {fileName} to {fullPath}")
-        originalPath = self.workingDir + "/" + photo.filename
+        originalPath = self._get_temp_path(photo.filename)
         logging.info(f"Saving {fullPath}.")
         # create the exif tag for the image
         exif_dict["Exif"][piexif.ExifIFD.SubjectArea] = numFaces
@@ -197,7 +216,7 @@ class iCloudFileFetcher:
         exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = bDate
         exif_bytes = piexif.dump(exif_dict)
         image.save(fullPath, "JPEG", exif=exif_bytes)
-        if fullPath != originalPath:
+        if not self.keepOriginalFiles:
             remove(originalPath)
 
         self.cache.addPhotoToCache(fileName, fullPath)
@@ -208,6 +227,7 @@ class iCloudFileFetcher:
         return photo \
             and canUseFormat \
             and not self.cache.isPhotoInCache(photo) \
+            and photo.filename not in self.rejectedPhotos \
             and photo.dimensions[0] * photo.dimensions[1] < 15000000
 
 
@@ -305,9 +325,12 @@ class iCloudFileFetcher:
 
         return len(face_locations), startX, startY, endX, endY
 
+    def _get_temp_path(self, filename) -> str:
+        return "/tmp/photos/" + filename
+
     def _download_jpeg(self, photo) -> Image:
         try:
-            fullPath = self.workingDir + "/" + photo.filename
+            fullPath = self._get_temp_path(photo.filename)
             download = photo.download("medium")
             if not download:
                 download = photo.download("original")
@@ -333,11 +356,12 @@ class iCloudFileFetcher:
             
         try:
             download = photo.download()
+            fullPath = self._get_temp_path(photo.filename)
             if download:
-                with open("photo.HEIC", 'wb') as opened_file:
+                with open(fullPath, 'wb') as opened_file:
                     opened_file.write(download.raw.read())
                     opened_file.close()
-            heif = pyheif.read("photo.HEIC")
+            heif = pyheif.read(fullPath)
             img = Image.frombytes(
                 heif.mode, 
                 heif.size, 
@@ -356,3 +380,7 @@ class iCloudFileFetcher:
     def cleanup(self):
         self.finished = True
         self.workerThread.join()
+        # write the rejected photos list back to rejected file
+        with open("rejected.txt", 'w') as f:
+            for photo in self.rejectedPhotos:
+                f.write(photo + "\n")
