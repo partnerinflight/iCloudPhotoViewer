@@ -199,7 +199,7 @@ def get_thumbnail(name):
         image.save(thumbPath, 'JPEG')
         return thumbPath
 
-@webApp.route('/media/<regex("([\w\d_/-]+)?.(?:JPEG|gif|png)"):filename>')
+@webApp.route('/media/<regex("([a-zA-Z0-9\s_\\.\-\(\):%])+.(?:JPEG)"):filename>')
 def thumbnail(filename):
     return send_file(get_thumbnail(filename))
 
