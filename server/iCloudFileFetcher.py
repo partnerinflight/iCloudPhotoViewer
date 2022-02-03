@@ -110,7 +110,7 @@ class iCloudFileFetcher:
         # of photos not to be fetched.
         self.cache.deletePhoto(photo)
         self.rejectedPhotos.append(photo)
-
+        self.slideshowInterface.displayedPhotos = [value for value in self.slideshowInterface.displayedPhotos if value != photo]
 
     def sendSlideshowCommand(self, command, params):
         self.slideshowInterface.sendCommand(command, params)
