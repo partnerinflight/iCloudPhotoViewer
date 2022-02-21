@@ -18,7 +18,7 @@
             "command": "${workspaceRoot}/remote-stop.bat",
             "type": "shell",
             "problemMatcher": []
-        }
+        },
         {
             "type": "austin",
             "file": "${worspaceRoot}/server/WebFrontend.py",
