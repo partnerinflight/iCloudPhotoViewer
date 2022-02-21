@@ -27,7 +27,8 @@ class SlideshowInterface:
             if "command" in msg and msg["command"] == "displayedPhoto":
                 # add the displayed photo name to list of displayed photos
                 self.displayedPhotos.insert(0, msg["params"])
-
+                if (len(self.displayedPhotos) > 50):
+                    self.displayedPhotos.pop()
 
     def report(self, status, numTotalPhotos, numProcessedPhotos, numFailedPhotos):
         res = self.commandSocket.send_json({

@@ -19,6 +19,12 @@
             "type": "shell",
             "problemMatcher": []
         }
+        {
+            "type": "austin",
+            "file": "${worspaceRoot}/server/WebFrontend.py",
+            "args": ["--verbose"],
+            "label": "Profile WebFrontEnd.py",
+        }
 
     ]
 }

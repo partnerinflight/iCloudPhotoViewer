@@ -45,7 +45,7 @@ class iCloudFileFetcher:
     slideshowInterface: SlideshowInterface = None
     keepOriginalFiles: bool = False
     rejectedPhotos = []
-
+    
     def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket, statusPort, keepOriginalFiles=False):
         logging.getLogger().setLevel(logging.INFO)
         logging.info("Initializing Collector with params: Album: " + str(albumName) + " Resize: " + str(resize) + " MaxSize: " + str(maxSize) + " WorkingDir: " + str(workingDir))
@@ -228,6 +228,8 @@ class iCloudFileFetcher:
             and canUseFormat \
             and not self.cache.isPhotoInCache(photo) \
             and photo.filename not in self.rejectedPhotos \
+            and photo.dimensions[0] > 500 \
+            and photo.dimensions[1] > 500 \
             and photo.dimensions[0] * photo.dimensions[1] < 15000000
 
 
