@@ -1,121 +1,42 @@
 from datetime import datetime
 from flask import Flask, request, send_file
 from werkzeug.routing import BaseConverter
-from pyicloud import PyiCloudService
 import logging
-import enum
 import json
-from iCloudFileFetcher import iCloudFileFetcher
+from PhotoProcessor import Downloader, Status, PhotoProcessor
 from os import path, mkdir
 import sys
 import threading
 from io import BytesIO
 from PIL import Image, ImageOps
 
+from ImmichDownloader import ImmichDownloader
+from Constants import CONFIG_LOG_TO_FILE, CONFIG_SERVER_SOCKET, CONFIG_THUMBNAIL_DIR, CONFIG_WORKING_DIR, STATUS_CHANGED_EVENT
+
 class RegexConverter(BaseConverter):
     def __init__(self, url_map, *items):
         super(RegexConverter, self).__init__(url_map)
         self.regex = items[0]
 
-configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
-with open(configPath, 'r') as config:
-    obj = json.load(config)
-    logToFile = obj["logToFile"]
-    serverSocket = obj["serverSocket"]
-    ipcSocket = obj["ipcSocket"]
-    loggingSocket = obj["loggingSocket"]
-    workingDir = obj["workingDir"]
-    thumbnailDir = obj["thumbnailDir"]
-    if not path.exists(thumbnailDir):
-        mkdir(thumbnailDir)
-    
-class Status(enum.Enum):
-    NotLoggedIn = 1
-    NeedToSendMFACode = 2
-    WaitingForMFACode = 3
-    LoggedIn = 4
-
 class WebFrontEnd:
     status = Status.NotLoggedIn
     devices = None
-    api: PyiCloudService = None
-    fetcher: iCloudFileFetcher = None
+    downloader: Downloader = None
+    fetcher: PhotoProcessor = None
     mfaDevice: None
-    fetcher: iCloudFileFetcher = None
 
     def __init__(self, fetcher):
         self.fetcher = fetcher
+        self.downloader = fetcher.downloader
 
     def setCredentials(self, userName, password):
         self.userName = userName
         self.password = password
-        self.authenticate(userName, password)
+        self.fetcher.downloader.authenticate(userName, password)
 
     def setLoggedIn(self):
-        logging.info("Logged in, sending API to fetcher")
+        logging.info("Logged in!")
         self.status = Status.LoggedIn
-        self.fetcher.setApi(self.api)
-
-    def authenticate(self, userName, password) -> PyiCloudService:
-        try:
-            logging.info("Authenticating...")
-            self.api = PyiCloudService(userName, password)
-
-            if self.api.requires_2fa:
-                logging.info("Two factor authentication required")
-                self.status = Status.WaitingForMFACode
-            elif self.api.requires_2sa:
-                self.status = Status.NeedToSendMFACode
-                logging.info("Two-step authentication required.")
-                self.devices = self.api.trusted_devices
-                logging.info(self.devices)
-            else:
-                self.setLoggedIn()
-        except:
-            logging.error("Failed to authenticate")
-            self.status = Status.NotLoggedIn
-            self.api = None
-
-    def sendCode(self, deviceId):
-        device = list(filter(lambda x: x['deviceId'] == deviceId, self.devices))[0]
-        if not device:
-            print("Device not found")
-            return
-        
-        self.chosenDevice = device
-        if not self.api.send_verification_code(device):
-            logging.error("Failed to send verification code")
-            self.status = Status.NotLoggedIn
-            self.api = None
-        else:
-            self.status = Status.WaitingForMFACode
-
-    def validateCode(self, code):
-        logging.info(f"Received code ${code}")
-        if self.api.requires_2fa:
-            result = self.api.validate_2fa_code(code)
-            if not result:
-                logging.error("Failed to validate code")
-                self.status = Status.NotLoggedIn
-                self.api = None
-                return
-            if not self.api.is_trusted_session:
-                logging.info("Session is not trusted")
-                result = self.api.trust_session()
-                if not result:
-                    logging.error("Failed to trust session")
-                    self.status = Status.NotLoggedIn
-                    self.api = None
-            self.setLoggedIn()
-        elif self.api.requires_2sa:
-            if self.api.validate_verification_code(self.chosenDevice, code):
-                self.setLoggedIn()
-        else:
-            self.status = Status.NotLoggedIn
-            self.api = None
-
-    def getDevices(self):
-        return self.devices
 
     def getStatus(self):
         return json.dumps({
@@ -143,7 +64,7 @@ def status():
 def login():
     global frontEnd
     json = request.get_json()
-    frontEnd.authenticate(json['userName'], json['password'])
+    frontEnd.setCredentials(json['userName'], json['password'])
     return frontEnd.getStatus()
 
 @webApp.route('/api/mfa_device_choice', methods=['GET', 'POST'])
@@ -151,10 +72,10 @@ def mfa_device_choice():
     global frontEnd
     if request.method == 'POST':
         deviceJson = json.loads(request.data)
-        frontEnd.sendCode(deviceJson['device'])
+        frontEnd.downloader.sendCode(deviceJson['device'])
         return frontEnd.getStatus()
     else:
-        devices = frontEnd.getDevices()
+        devices = frontEnd.downloader.getDevices()
         return json.dumps(devices)
 
 @webApp.route('/api/mfa_code', methods=['POST'])
@@ -168,7 +89,7 @@ def mfa():
 def downloader_status():
     global frontEnd
     return json.dumps({
-        'status': frontEnd.fetcher.status,
+        'status': str(frontEnd.downloader.status),
         'album': frontEnd.fetcher.albumName,
         'numPhotos': frontEnd.fetcher.numPhotosInAlbum,
         'numPhotosProcessed': frontEnd.fetcher.numPhotosProcessed,
@@ -181,23 +102,25 @@ def displayed_list():
     return json.dumps(frontEnd.fetcher.displayedList)
 
 def get_thumbnail(name):
-        filepath = path.join(workingDir, name)
-        thumbPath = path.join(thumbnailDir, name)
+    global workingDir
+    global thumbnailDir
+    filepath = path.join(workingDir, name)
+    thumbPath = path.join(thumbnailDir, name)
 
-        if path.exists(thumbPath):
-            return thumbPath
-
-        with open(filepath, 'rb') as f:            
-            image = Image.open(BytesIO(f.read()))
-        try:
-            image.load()
-        except (IOError, OSError):
-            logging.warning('Thumbnail not load image: %s', filepath)
-            return filepath
-
-        image = ImageOps.fit(image, (200, 200), Image.ANTIALIAS)
-        image.save(thumbPath, 'JPEG')
+    if path.exists(thumbPath):
         return thumbPath
+
+    with open(filepath, 'rb') as f:            
+        image = Image.open(BytesIO(f.read()))
+    try:
+        image.load()
+    except (IOError, OSError):
+        logging.warning('Thumbnail not load image: %s', filepath)
+        return filepath
+
+    image = ImageOps.fit(image, (200, 200), Image.ANTIALIAS)
+    image.save(thumbPath, 'JPEG')
+    return thumbPath
 
 @webApp.route('/media/<regex("([a-zA-Z0-9\s_\\.\-\(\):%])+.(?:JPEG)"):filename>')
 def thumbnail(filename):
@@ -223,30 +146,17 @@ def screen_control():
         frontEnd.fetcher.sendSlideshowCommand('screen', 'off')
     return downloader_status()
 
- # fetch config data
-with open(configPath, 'r') as config:
-    obj = json.load(config)
-    albumName = obj["albumName"]
-    workingDir = obj["workingDir"]
-    maxSpace = obj["maxSpaceGb"]
-    resizeImage = obj["resizeImage"]
-    logToFile = obj["logToFile"]
-    if "keepOriginalFiles" in obj:
-        keepOriginalFiles = obj["keepOriginalFiles"]
-    else:
-        keepOriginalFiles = False
-
-if logToFile:
-    filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")
-    logging.basicConfig(filename=filePath, level=logging.INFO, format='%(asctime)s %(message)s')
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
-
-# setup major parts of the system
-fetcher = iCloudFileFetcher(albumName, resizeImage, maxSpace, workingDir, ipcSocket, loggingSocket, keepOriginalFiles)
-frontEnd = WebFrontEnd(fetcher)
-
-logging.info("Starting web app")
+def downloaderStatusChanged(status):
+    global downloader
+    logging.info(f"Downloader status changed to {status}")
+    if status == Status.LoggedIn:
+        frontEnd.setLoggedIn()
+    elif status == Status.WaitingForMFACode:
+        frontEnd.status = Status.WaitingForMFACode
+        frontEnd.devices = downloader.devices
+    elif status == Status.NeedToSendMFACode:
+        frontEnd.status = Status.NeedToSendMFACode
+        frontEnd.devices = downloader.devices
 
 def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
     """Handler for unhandled exceptions that will write to the logs"""
@@ -278,7 +188,42 @@ def patch_threading_excepthook():
 
 patch_threading_excepthook()
 
-host_name = "0.0.0.0"
-port = serverSocket
-print(f"Starting web app on {host_name}:{port}")
-webApp.run(host=host_name, port=port, use_reloader=False, threaded=True)
+frontEnd = None
+workingDir = None
+thumbnailDir = None
+downloader = None
+
+def main():
+    # setup major parts of the system
+    global frontEnd, workingDir, thumbnailDir, downloader
+
+    config = None
+    configPath = path.join(path.dirname(path.realpath(__file__)), "../config.json")
+    with open(configPath, 'r') as config:
+        config = json.load(config)
+        logToFile = config[CONFIG_LOG_TO_FILE]
+        serverSocket = config[CONFIG_SERVER_SOCKET]
+        workingDir = config[CONFIG_WORKING_DIR]
+        thumbnailDir = config[CONFIG_THUMBNAIL_DIR]
+        if not path.exists(thumbnailDir):
+            mkdir(thumbnailDir)
+
+    if logToFile:
+        filePath = path.join(path.dirname(path.realpath(__file__)), f"../logs/server_{datetime.now().strftime('%Y-%m-%d--%H-%M')}.log")
+        logging.basicConfig(filename=filePath, level=logging.INFO, format='%(asctime)s %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s: %(message)s')
+    logging.info("Starting server")
+    downloader = ImmichDownloader(config)
+    downloader.on(STATUS_CHANGED_EVENT, downloaderStatusChanged)
+    fetcher = PhotoProcessor(downloader, config)
+    frontEnd = WebFrontEnd(fetcher)
+
+    logging.info("Starting web app")
+    host_name = "0.0.0.0"
+    port = serverSocket
+    print(f"Starting web app on {host_name}:{port}")
+    webApp.run(host=host_name, port=port, use_reloader=False, threaded=True)
+
+if __name__ == "__main__":
+    main()

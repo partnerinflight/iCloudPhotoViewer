@@ -15,5 +15,7 @@
     "showStatus": true,
     "ipcSocket": 5001,
     "loggingSocket": 5002,
-    "autoLaunchCollector": true
+    "autoLaunchCollector": true,
+    "immichServerUrl": "https://",
+    "recencyBias": 0.5
 }

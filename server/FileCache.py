@@ -1,8 +1,9 @@
 import shutil
 import os
-import time
 from os import path
 import logging
+
+from Downloader import Photo
 
 class FileCache:
     maxAvailableSpace = 0
@@ -28,8 +29,8 @@ class FileCache:
         self.loadPhotos()
         self.cleanupCache()
 
-    def deletePhoto(self, photo):
-        fullFilePath = self.workingDir + "/" + photo
+    def deletePhoto(self, photo: Photo):
+        fullFilePath = self.workingDir + "/" + photo.id
         self.usedSpace -= path.getsize(fullFilePath)
         logging.info(f'Deleting {fullFilePath}')
         os.unlink(fullFilePath)
@@ -59,10 +60,10 @@ class FileCache:
             result = 100
         return result
 
-    def addPhotoToCache(self, file, fullPath):
-        self.photos[file] = os.path.getmtime(fullPath)
+    def addPhotoToCache(self, photo, fullPath):
+        self.photos[photo.id] = os.path.getmtime(fullPath)
         self.usedSpace += path.getsize(fullPath)
-        logging.info(f'Added {file} to cache')
+        logging.info(f'Added {photo.id} to cache')
         self.cleanupCache()
 
     def cleanupCache(self):

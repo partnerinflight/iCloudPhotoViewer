@@ -1,11 +1,9 @@
 import pygame
-from pyicloud import PyiCloudService
-from pyicloud.exceptions import PyiCloudAPIResponseException
 import logging
 import face_recognition
 import numpy as np
 from threading import Thread
-from random import randint, choice
+from random import choices, randint, choice
 from math import trunc
 from PIL import Image
 from os import environ, path, remove
@@ -14,6 +12,9 @@ from pyicloud.services.photos import PhotoAlbum
 from SlideshowInterface import SlideshowInterface
 import time
 import piexif
+
+from Downloader import STATUS_CHANGED_EVENT, Downloader, Photo, Status
+from Constants import CONFIG_ALBUM_NAME, CONFIG_IPC_SOCKET, CONFIG_KEEP_ORIGINAL_FILES, CONFIG_MAXSIZE, CONFIG_RECENCY_BIAS, CONFIG_RESIZE_IMAGE, CONFIG_STATUS_SOCKET, CONFIG_WORKING_DIR
 
 canConvertHeif = True
 try:
@@ -29,8 +30,7 @@ zeroth_ifd = {
     piexif.ImageIFD.Software: u"piexif"
     }
 
-class iCloudFileFetcher:    
-    api: PyiCloudService = None
+class PhotoProcessor:    
     photos = dict()
     photosAlbum: PhotoAlbum = None
     workingDir = "/tmp/photos"
@@ -46,18 +46,31 @@ class iCloudFileFetcher:
     keepOriginalFiles: bool = False
     rejectedPhotos = []
     
-    def __init__(self, albumName: str, resize: bool, maxSize, workingDir, ipcSocket, statusPort, keepOriginalFiles=False):
+    def __init__(self, downloader: Downloader, config):
         logging.getLogger().setLevel(logging.INFO)
-        logging.info("Initializing Collector with params: Album: " + str(albumName) + " Resize: " + str(resize) + " MaxSize: " + str(maxSize) + " WorkingDir: " + str(workingDir))
+        self.albumName = config[CONFIG_ALBUM_NAME]
+        self.recencyBias = config[CONFIG_RECENCY_BIAS]
+        resize = config[CONFIG_RESIZE_IMAGE]
+        maxSize = config[CONFIG_MAXSIZE]
+        workingDir = config[CONFIG_WORKING_DIR]
+        ipcSocket = config[CONFIG_IPC_SOCKET]
+        statusPort = config[CONFIG_STATUS_SOCKET]
+        self.numPhotosInAlbum = 0
+        if CONFIG_KEEP_ORIGINAL_FILES in config:
+            keepOriginalFiles = config[CONFIG_KEEP_ORIGINAL_FILES]
+        else:
+            keepOriginalFiles = False
+    
+        logging.info("Initializing Collector with params: Album: " + str(self.albumName) + " Resize: " + str(resize) + " MaxSize: " + str(maxSize) + " WorkingDir: " + str(workingDir))
         self.finished = False
-        self.albumName = albumName
         self.resize = resize
         self.workingDir = workingDir
         self.cache = FileCache(maxSize, workingDir)
         self.workerThread = Thread(target=self.worker)
         self.slideshowInterface = SlideshowInterface(ipcSocket, statusPort)
         self.keepOriginalFiles = keepOriginalFiles
-
+        self.downloader = downloader
+        self.downloader.on(STATUS_CHANGED_EVENT, lambda status: self.onDownloaderStatusChanged(status))
         #pull rejected photos from a text file
         if path.exists("rejected.txt"):
             with open("rejected.txt", "r") as f:
@@ -68,17 +81,10 @@ class iCloudFileFetcher:
         screen = pygame.display.set_mode() # [0,0], pygame.OPENGL)
         self.screenSize = screen.get_size()
         pygame.display.quit()
-        
-    @property
-    def status(self):
-        return self._status
 
-    @property
-    def numPhotosInAlbum(self):
-        if self.photosAlbum != None:
-            return len(self.photosAlbum)
-        else:
-            return 0
+    def onDownloaderStatusChanged(self, status):
+        if status == Status.LoggedIn:
+            self.workerThread.start()
 
     @property
     def displayedList(self):
@@ -98,13 +104,7 @@ class iCloudFileFetcher:
     @property
     def cacheUsePercent(self):
         return self.cache.cacheUsePercent
-
-    def setApi(self, api: PyiCloudService):
-        self.api = api
-        if api:
-            logging.info("Got a valid API. Starting fetcher")
-            self.workerThread.start()
-        
+      
     def deletePhoto(self, photo: str):
         # Here we want to delete the photo and add it to the list
         # of photos not to be fetched.
@@ -115,39 +115,49 @@ class iCloudFileFetcher:
     def sendSlideshowCommand(self, command, params):
         self.slideshowInterface.sendCommand(command, params)
 
-    def setPhotosList(self):
-        if not self.albumName:
-            self.photosAlbum = self.api.photos.all
-        else:
-            albums = []
-            for album in self.api.photos.albums:
-                albums.append(album.title())
-
-            if self.albumName not in albums:
-                self.albumName = choice(albums)
-            self.photosAlbum = len(self.api.photos.albums[self.albumName])
-        logging.info(f"# Fotos in album \"{self.photosAlbum.title}\": {len(self.photosAlbum)}")
-
     def worker(self):
         logging.info("Started FileCache Worker Thread")
         self._status = "Fetching Photos"
-        self.setPhotosList()
-        finishedIndexes = []
-        albumSize = len(self.photosAlbum)
+        finishedIds = []
         numFailedPhotos = 0
+        cachedBuckets = {}
+
+        # get the timeline buckets we have to work with
+        buckets = self.downloader.getTimelineBuckets()
+
+        # count up the total number of photos, which is the sum of 'count' entries in the buckets
+        self.numPhotosInAlbum = 0
+        for bucket in buckets:
+            self.numPhotosInAlbum += bucket["count"]
+
+        weights = [(i / len(buckets))**(1 - self.recencyBias) for i in range(len(buckets))]
+        total_weight = sum(weights)
+        normalized_weights = [w / total_weight for w in weights]
 
         while not self.finished:
-            if (len(finishedIndexes) == albumSize):
+            if (len(finishedIds) == self.numPhotosInAlbum):
                 self.finished = True
                 self._status = "Finished"
                 break
 
             # main retrieval loop
-            # pick a photo from the list, then convert it / resize it / save it
-            # keep doing that. When we fill up the file cache, start deleting files
-            photoIndex = randint(0, albumSize - 1)
+            # pick a random timeline bucket from the list (with recency bias). Then get the photos from that bucket
+            # and store them in a cache dictionary
+            # Determine weights based on recency preference
+            # Download photos based on weights
+            bucket = choices(buckets, weights=normalized_weights)
             
-            if photoIndex in finishedIndexes:
+            # if we've already cached this bucket, skip retrieval
+            bucketName = bucket[0]["timeBucket"]
+
+            if bucketName not in cachedBuckets:
+                photos = self.downloader.getPhotosForBucket(bucketName)
+                cachedBuckets[bucketName] = photos
+
+            # pick a random photo from the bucket
+            photoIndex = randint(0, len(cachedBuckets[bucketName]) - 1)
+
+            if photoIndex in finishedIds:
                 continue
 
             # delay based on # of photos in the library
@@ -162,35 +172,29 @@ class iCloudFileFetcher:
 
             # try fetching the photo
             try:
-                for photo in self.photosAlbum.photo(photoIndex):
-                    if not self.cache.isPhotoInCache(photo):
-                        self.processPhoto(photo)
+                photo = cachedBuckets[bucketName][photoIndex]
+                if not self.cache.isPhotoInCache(photo):
+                    self.processPhoto(photo)
             except Exception as e:
-                logging.error("Could not fetch photo index " + str(photoIndex) + ": " + str(e))
+                logging.error("Could not fetch photo: " + photo.filename + ": " + str(e))
                 numFailedPhotos = numFailedPhotos + 1
             finally:
-                finishedIndexes.append(photoIndex)
-                photoIndex = photoIndex + 1
-                self.slideshowInterface.report("working", albumSize, self.cache.numFiles, numFailedPhotos)
+                finishedIds.append(photo.id)
+                self.slideshowInterface.report("working", self.numPhotosInAlbum, self.cache.numFiles, numFailedPhotos)
         
-        self.slideshowInterface.report("Finished", albumSize, self.cache.numFiles, numFailedPhotos)
+        self.slideshowInterface.report("Finished", self.numPhotosInAlbum, self.cache.numFiles, numFailedPhotos)
 
-    def processPhoto(self, photo):
+    def processPhoto(self, photo: Photo):
         logging.info(f"Picked photo {photo.filename} for processing")
         split = path.splitext(photo.filename)
 
         if not self.usePhoto(photo, split[1]):
             logging.warning(f"Photo {photo.filename} is not usable")
             raise Exception("Photo is not usable")
-    
+
         self._status = f"Examining photo {photo.filename}"
-        # convert/download photo from icloud
-        if (split[1] == ".HEIC"):
-            self._status = f"Converting {photo.filename}"
-            image = self._convert_heic(photo, split[0])
-        else:
-            self._status = f"Downloading {photo.filename}"
-            image = self._download_jpeg(photo)
+        self._status = f"Downloading {photo.filename}"
+        image = photo.download(self._get_temp_path(photo.filename))
 
         if image == None:
             logging.error(f"Failed to download image {photo.filename}")
@@ -211,7 +215,7 @@ class iCloudFileFetcher:
         logging.info(f"Saving {fullPath}.")
         # create the exif tag for the image
         exif_dict["Exif"][piexif.ExifIFD.SubjectArea] = numFaces
-        date = photo.created.strftime("%Y:%m:%d %H:%M:%S")
+        date = photo.created
         bDate = bytes(date, "utf-8")
         exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = bDate
         exif_bytes = piexif.dump(exif_dict)
@@ -219,15 +223,14 @@ class iCloudFileFetcher:
         if not self.keepOriginalFiles:
             remove(originalPath)
 
-        self.cache.addPhotoToCache(fileName, fullPath)
+        self.cache.addPhotoToCache(photo, fullPath)
 
     def usePhoto(self, photo, extension) -> bool:
         extension = extension.upper()
-        canUseFormat = extension == ".JPEG" or extension == ".JPG" or (canConvertHeif and extension == ".HEIC")
+        #canUseFormat = extension == ".JPEG" or extension == ".JPG" or (canConvertHeif and extension == ".HEIC")
         return photo \
-            and canUseFormat \
             and not self.cache.isPhotoInCache(photo) \
-            and photo.filename not in self.rejectedPhotos \
+            and photo.id not in self.rejectedPhotos \
             and photo.dimensions[0] > 500 \
             and photo.dimensions[1] > 500 \
             and photo.dimensions[0] * photo.dimensions[1] < 15000000
@@ -330,34 +333,17 @@ class iCloudFileFetcher:
     def _get_temp_path(self, filename) -> str:
         return "/tmp/photos/" + filename
 
-    def _download_jpeg(self, photo) -> Image:
-        try:
-            fullPath = self._get_temp_path(photo.filename)
-            download = photo.download("medium")
-            if not download:
-                download = photo.download("original")
-
-            if download:
-                with open(fullPath, 'wb') as opened_file:
-                    opened_file.write(download.raw.read())
-                    opened_file.close()
-                return Image.open(fullPath)
-            else:
-                return None
-        except IOError as err:
-            logging.error(err)
-            return None
-        except PyiCloudAPIResponseException as err:
-            logging.error(err)
-            return None
-
-    def _convert_heic(self, photo, name) -> Image:
+    def _convert_heic(self, photo) -> Image:
         if not canConvertHeif:
             logging.error('HEIF library not loaded. Conversion failed')
             return None
             
         try:
-            download = photo.download()
+            download = photo.download(self._get_temp_path(photo.filename))
+            if not download:
+                logging.error('Failed to download HEIC photo')
+                return None
+            
             fullPath = self._get_temp_path(photo.filename)
             if download:
                 with open(fullPath, 'wb') as opened_file:
@@ -373,9 +359,6 @@ class iCloudFileFetcher:
                 heif.stride)
             return img
         except IOError as err:
-            logging.error(err)
-            return None
-        except PyiCloudAPIResponseException as err:
             logging.error(err)
             return None
 
